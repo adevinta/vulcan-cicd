@@ -47,7 +47,7 @@ function main() {
 
   FIRST_TAG=$(echo $TAGS | cut -d ' ' -f1)
   DOCKERNAME="${INPUT_NAME}:${FIRST_TAG}"
-  BUILDPARAMS=""
+  BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
   CONTEXT="."
 
   if uses "${INPUT_DOCKERFILE}"; then
