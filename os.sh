@@ -22,7 +22,7 @@ function patch_files() {
 
     COMMENT="# $COMMON_MSG\n\n"
     rg --files-without-match ''"$COMMON_PATTERN"'' \
-        -t ruby -t py -t docker -t sh -t yaml -t toml -g '!.travis.yml' $BASE | \
+        -t ruby -t py -t docker -t sh -t yaml -t toml -g '!.travis.y*ml' $BASE | \
         xargs -r -n1 sed -i '1s!^!'"$COMMENT"'!'
 
     COMMENT="/*\n$COMMON_MSG\n*/\n"
@@ -38,5 +38,15 @@ function add_copyright() {
     cp LICENSE $BASE/
 }
 
+if [ ! -d $1 ]; then
+    echo "Usage $0 path"
+    exit 1
+fi
+
+if [ ! -x "$(which rg)" ]; then
+    echo "We need to install rg (ripgrep)"
+    exit 1
+fi
+
 patch_files $1
-# add_copyright $1
+add_copyright $1
