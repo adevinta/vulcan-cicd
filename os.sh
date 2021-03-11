@@ -13,7 +13,7 @@ function patch_files() {
 
     # Update existing year
     rg -l -e ''$COMMON_PATTERN'' $BASE | \
-        xargs -r sed -i 's/Copyright[ \t]\+20[0-9]\{2\}[ \t]\+Adevinta/'"$COMMON_MSG"'/g'
+        xargs -r sed -i 's|Copyright[ \t]\+20[0-9]\{2\}[ \t]\+Adevinta|'"$COMMON_MSG"'|g'
 
     # Files with hash-bang notation (shell, python, ruby)
     COMMENT="# $COMMON_MSG\n"
@@ -23,11 +23,11 @@ function patch_files() {
     COMMENT="# $COMMON_MSG\n\n"
     rg --files-without-match ''"$COMMON_PATTERN"'' \
         -t ruby -t py -t docker -t sh -t yaml -t toml -g '!.travis.y*ml' $BASE | \
-        xargs -r -n1 sed -i '1s!^!'"$COMMENT"'!'
+        xargs -r -n1 sed -i '1s|^|'"$COMMENT"'|'
 
     COMMENT="/*\n$COMMON_MSG\n*/\n"
     rg --files-without-match ''"$COMMON_PATTERN"'' -t go $BASE | \
-        xargs -r -n1 sed -i '1s!^!'"$COMMENT"'!'
+        xargs -r -n1 sed -i '1s|^|'"$COMMENT"'|'
 }
 
 function add_copyright() {
