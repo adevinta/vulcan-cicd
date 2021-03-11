@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Adevinta
+// Copyright 2020 Adevinta
 package main
 
 import "fmt"
