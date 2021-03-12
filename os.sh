@@ -26,9 +26,9 @@ function patch_folder() {
     COMMON_MSG="Copyright $(date +"%Y") Adevinta"
     COMMON_PATTERN="Copyright\s+20[0-9]{2}\s+Adevinta"
 
-    # Update existing year
-    rg -l -e ''$COMMON_PATTERN'' $BASE | \
-        xargs -r -n1 $SED -i 's|Copyright[ \t]\+20[0-9]\{2\}[ \t]\+Adevinta|'"$COMMON_MSG"'|g'
+    # # Update existing year
+    # rg -l -e ''$COMMON_PATTERN'' $BASE | \
+    #     xargs -r -n1 $SED -i 's|Copyright[ \t]\+20[0-9]\{2\}[ \t]\+Adevinta|'"$COMMON_MSG"'|g'
 
     # Files with hash-bang notation (shell, python, ruby)
     COMMENT="# $COMMON_MSG"
@@ -52,9 +52,17 @@ function add_copyright() {
     fi
     BASE=$1
 
-    cp CONTRIBUTING.md $BASE/
-    cp DISCLAIMER.md $BASE/
-    cp LICENSE $BASE/
+    if [[ ! -f "$BASE/CONTRIBUTING.md" ]]; then
+        cp CONTRIBUTING.md $BASE/
+    fi
+
+    if [[ ! -f "$BASE/DISCLAIMER.md" ]]; then
+        cp DISCLAIMER.md $BASE/
+    fi
+
+    if [[ ! -f "$BASE/LICENSE" ]]; then
+        cp LICENSE $BASE/
+    fi
 }
 
 function patch_repo() {
