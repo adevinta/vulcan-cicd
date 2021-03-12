@@ -31,16 +31,16 @@ function patch_folder() {
         xargs -r -n1 $SED -i 's|Copyright[ \t]\+20[0-9]\{2\}[ \t]\+Adevinta|'"$COMMON_MSG"'|g'
 
     # Files with hash-bang notation (shell, python, ruby)
-    COMMENT="# $COMMON_MSG\n"
+    COMMENT="# $COMMON_MSG"
     rg --files-without-match ''"$COMMON_PATTERN"'' -t py -t sh -t ruby $BASE | \
-        xargs -r -n1 $SED -i '1s|^\(#!/.\+\)|\1\n'"$COMMENT"'|'
+        xargs -r -n1 $SED -i '1s|^\(#!/.\+\)|\1\n\n'"$COMMENT"'|'
 
     COMMENT="# $COMMON_MSG\n\n"
     rg --files-without-match ''"$COMMON_PATTERN"'' \
-        -t ruby -t py -t docker -t sh -t yaml -t toml -g '!.travis.y*ml' $BASE | \
+        -t ruby -t py -t docker -t sh $BASE | \
         xargs -r -n1 $SED -i '1s|^|'"$COMMENT"'|'
 
-    COMMENT="/*\n$COMMON_MSG\n*/\n"
+    COMMENT="/*\n$COMMON_MSG\n*/\n\n"
     rg --files-without-match ''"$COMMON_PATTERN"'' -t go $BASE | \
         xargs -r -n1 $SED -i '1s|^|'"$COMMENT"'|'
 }
