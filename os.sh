@@ -41,7 +41,7 @@ function patch_folder() {
         xargs -r -n1 $SED -i '1s|^|'"$COMMENT"'|'
 
     COMMENT="/*\n$COMMON_MSG\n*/\n\n"
-    rg --files-without-match ''"$COMMON_PATTERN"'' -t go $BASE | \
+    rg --files-without-match ''"$COMMON_PATTERN"'' -t go -g '!vendor/*' $BASE | \
         xargs -r -n1 $SED -i '1s|^|'"$COMMENT"'|'
 }
 
