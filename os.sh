@@ -57,5 +57,28 @@ function add_copyright() {
     cp LICENSE $BASE/
 }
 
-patch_folder $1
-add_copyright $1
+function patch_repo() {
+    if [[ ! -x "$(which gh)" ]]; then
+        echo "We need github-cli"
+        exit 1
+    fi
+
+    REPO_FOLDER=$(mktemp -d)
+    echo "Working in $REPO_FOLDER"
+
+    gh repo clone $1 $REPO_FOLDER
+    patch_folder $REPO_FOLDER
+    add_copyright $REPO_FOLDER
+    pushd $REPO_FOLDER
+    FIX_SLUG=$(date +"%Y%m%d_%s")
+    git checkout -b os_update_$FIX_SLUG
+    git add .
+    if ! git diff-index --quiet --cached HEAD; then
+        git commit -m "Update Open Source"
+        gh pr create --fill
+    else
+        echo "No updates need to be commited"
+    fi
+    popd
+    rm -rf $REPO_FOLDER
+}
