@@ -5,21 +5,21 @@
 function patch_folder() {
     if [ ! -d $1 ]; then
         echo "Usage: $0 path [year]"
-        exit 1
+        return 1
     fi
     BASE=$1
     CYEAR=${2:-$(date +"%Y")}
 
     if [[ ! -x "$(which rg)" ]]; then
         echo "We need to install rg (ripgrep)"
-        exit 1
+        return 1
     fi
 
     SED=sed
     if [[ "$(uname)" == "Darwin" ]]; then
         if [[ ! -x "$(which gsed)" ]]; then
             echo "We need to use gnu-sed in mac (brew install gsed)"
-            exit 1
+            return 1
         fi
         SED=gsed
     fi
@@ -48,14 +48,15 @@ function patch_folder() {
 
 # Automate PR creation for a given github repo (i.e. adevinta/vulcan-cicd)
 function patch_github_repo() {
+    set -v
     if [ -z $1 ]; then
         echo "Usage: $0 adevinta/my-repo [-i]"
-        exit 1
+        return 1
     fi
 
     if [[ ! -x "$(which gh)" ]]; then
         echo "We need github-cli"
-        exit 1
+        return 1
     fi
 
     REPO_FOLDER=$(mktemp -d)
@@ -67,7 +68,7 @@ function patch_github_repo() {
 
     patch_folder .
 
-    if [ "$2" == "-i"]; then
+    if [[ "$2" == "-i" ]]; then
         # Allow to review the uncommited changes
         echo "Review/update the changes.."
         echo "Afterwards, all the changes will be added and a PR created"
@@ -91,11 +92,11 @@ function patch_github_repo() {
 function add_common_files() {
     if [ ! -d $1 ]; then
         echo "Usage: $0 srcpath dstpath"
-        exit 1
+        return 1
     fi
     if [ ! -d $2 ]; then
         echo "Usage: $0 srcpath dstpath"
-        exit 1
+        return 1
     fi
     CYEAR=${3:-$(date +"%Y")}
     BASE=$2
