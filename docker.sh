@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright 2020 Adevinta
 set -ev
 
 
