@@ -6,4 +6,3 @@ print("Hello world")
 print("""
 #!/bin/bash
 """)
-

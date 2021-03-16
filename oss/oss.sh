@@ -1,13 +1,14 @@
 #!/bin/bash
 # Copyright 2021 Adevinta
 
-
+# Adds missing copyright notice to code files (py, ruby, shell, dockerfiles) on folder
 function patch_folder() {
     if [ ! -d $1 ]; then
-        echo "Usage $0 path"
+        echo "Usage: $0 path [year]"
         exit 1
     fi
     BASE=$1
+    CYEAR=${2:-$(date +"%Y")}
 
     if [[ ! -x "$(which rg)" ]]; then
         echo "We need to install rg (ripgrep)"
@@ -23,7 +24,7 @@ function patch_folder() {
         SED=gsed
     fi
 
-    COMMON_MSG="Copyright $(date +"%Y") Adevinta"
+    COMMON_MSG="Copyright $CYEAR Adevinta"
     COMMON_PATTERN="Copyright\s+20[0-9]{2}\s+Adevinta"
 
     # # Update existing year
@@ -45,27 +46,13 @@ function patch_folder() {
         xargs -r -n1 $SED -i '1s|^|'"$COMMENT"'|'
 }
 
-function add_copyright() {
-    if [ ! -d $1 ]; then
-        echo "Usage $0 path"
+# Automate PR creation for a given github repo (i.e. adevinta/vulcan-cicd)
+function patch_github_repo() {
+    if [ -z $1 ]; then
+        echo "Usage: $0 adevinta/my-repo [-i]"
         exit 1
     fi
-    BASE=$1
 
-    if [[ ! -f "$BASE/CONTRIBUTING.md" ]]; then
-        cp CONTRIBUTING.md $BASE/
-    fi
-
-    if [[ ! -f "$BASE/DISCLAIMER.md" ]]; then
-        cp DISCLAIMER.md $BASE/
-    fi
-
-    if [[ ! -f "$BASE/LICENSE" ]]; then
-        cp LICENSE $BASE/
-    fi
-}
-
-function patch_repo() {
     if [[ ! -x "$(which gh)" ]]; then
         echo "We need github-cli"
         exit 1
@@ -75,9 +62,18 @@ function patch_repo() {
     echo "Working in $REPO_FOLDER"
 
     gh repo clone $1 $REPO_FOLDER
-    patch_folder $REPO_FOLDER
-    add_copyright $REPO_FOLDER
+
     pushd $REPO_FOLDER
+
+    patch_folder .
+
+    if [ "$2" == "-i"]; then
+        # Allow to review the uncommited changes
+        echo "Review/update the changes.."
+        echo "Afterwards, all the changes will be added and a PR created"
+        bash
+    fi
+
     FIX_SLUG=$(date +"%Y%m%d_%s")
     git checkout -b os_update_$FIX_SLUG
     git add .
@@ -89,4 +85,30 @@ function patch_repo() {
     fi
     popd
     rm -rf $REPO_FOLDER
+}
+
+
+function add_common_files() {
+    if [ ! -d $1 ]; then
+        echo "Usage: $0 srcpath dstpath"
+        exit 1
+    fi
+    if [ ! -d $2 ]; then
+        echo "Usage: $0 srcpath dstpath"
+        exit 1
+    fi
+    CYEAR=${3:-$(date +"%Y")}
+    BASE=$2
+
+    if [[ ! -f "$BASE/CONTRIBUTING.md" ]]; then
+        cat $1/CONTRIBUTING.md | sed 's/2021/'$CYEAR'/' > $BASE/CONTRIBUTING.md 
+    fi
+
+    if [[ ! -f "$BASE/DISCLAIMER.md" ]]; then
+        cat $1/DISCLAIMER.md | sed 's/2021/'$CYEAR'/' > $BASE/DISCLAIMER.md 
+    fi
+
+    if [[ ! -f "$BASE/LICENSE" ]]; then
+        cat $1/LICENSE | sed 's/2021/'$CYEAR'/' > $BASE/LICENSE.md 
+    fi
 }
