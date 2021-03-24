@@ -27,10 +27,6 @@ function patch_folder() {
     COMMON_MSG="Copyright $CYEAR Adevinta"
     COMMON_PATTERN="Copyright\s+20[0-9]{2}\s+Adevinta"
 
-    # # Update existing year
-    # rg -l -e ''$COMMON_PATTERN'' $BASE | \
-    #     xargs -r -n1 $SED -i 's|Copyright[ \t]\+20[0-9]\{2\}[ \t]\+Adevinta|'"$COMMON_MSG"'|g'
-
     # Files with hash-bang notation (shell, python, ruby)
     COMMENT="# $COMMON_MSG"
     rg --files-without-match ''"$COMMON_PATTERN"'' -t py -t sh -t ruby $BASE | \
