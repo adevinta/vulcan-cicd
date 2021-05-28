@@ -118,6 +118,7 @@ function docker_build() {
   do
     BUILD_TAGS="${BUILD_TAGS}-t ${INPUT_NAME}:${TAG} "
   done
+  echo "docker build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}"
   docker build "${INPUT_BUILDOPTIONS}" "${BUILDPARAMS}" "${BUILD_TAGS}" "${CONTEXT}"
 
   echo "::set-output name=tag::${FIRST_TAG}"
