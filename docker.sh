@@ -95,6 +95,10 @@ function docker_build() {
   BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
   CONTEXT="."
 
+  if [ -n "${INPUT_BUILDOPTIONS}" ]; then
+    BUILDPARAMS="${BUILDPARAMS} ${INPUT_BUILDOPTIONS}"
+  fi
+
   if [ -n "${INPUT_DOCKERFILE}" ]; then
     BUILDPARAMS="${BUILDPARAMS} -f ${INPUT_DOCKERFILE}"
   fi
@@ -118,8 +122,8 @@ function docker_build() {
   do
     BUILD_TAGS="${BUILD_TAGS}-t ${INPUT_NAME}:${TAG} "
   done
-  echo "docker build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}"
-  docker build "${INPUT_BUILDOPTIONS}" "${BUILDPARAMS}" "${BUILD_TAGS}" "${CONTEXT}"
+  echo "docker build ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}"
+  docker build "${BUILDPARAMS}" "${BUILD_TAGS}" "${CONTEXT}"
 
   echo "::set-output name=tag::${FIRST_TAG}"
   DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DOCKERNAME}")
