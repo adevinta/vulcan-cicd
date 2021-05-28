@@ -4,7 +4,7 @@
 set -ev
 
 
-function cicd_init() {
+function docker_init() {
   echo "" # see https://github.com/actions/toolkit/issues/168
 
   # Aapt to be compatible with artifactory registry
@@ -85,7 +85,7 @@ function sanitize() {
   fi
 }
 
-function cicd_build() {
+function docker_build() {
   if [ -e "${INPUT_WORKDIR}" ]; then
     cd "${INPUT_WORKDIR}"
   fi
@@ -125,21 +125,21 @@ function cicd_build() {
   echo "::set-output name=digest::${DIGEST}"
 }
 
-function cicd_push() {
+function docker_push() {
   for TAG in ${TAGS}
   do
     docker push "${INPUT_NAME}:${TAG}"
   done
 }
 
-function cicd_all() {
-    cicd_init
+function docker_all() {
+    docker_init
 
-    cicd_build
+    docker_build
 
-    cicd_push
+    docker_push
 
     docker logout
 }
 
-cicd_init
+docker_init
