@@ -141,3 +141,5 @@ function cicd_all() {
 
     docker logout
 }
+
+cicd_init
