@@ -1,10 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2020 Adevinta
 set -ev
 
 
-function main() {
+function cicd_init() {
   echo "" # see https://github.com/actions/toolkit/issues/168
 
   # Aapt to be compatible with artifactory registry
@@ -21,6 +21,8 @@ function main() {
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_PULL_REQUEST_BRANCH}   # In case of pull request we want the originating branch, not the target.
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_BRANCH}
 
+  GITHUB_SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+
   echo "INPUT_NAME=${INPUT_NAME}"
   echo "GITHUB_SHA=${GITHUB_SHA}"
   echo "GITHUB_REF=${GITHUB_REF}"
@@ -30,51 +32,50 @@ function main() {
   sanitize "${INPUT_PASSWORD}" "password"
 
   REGISTRY_NO_PROTOCOL=$(echo "${INPUT_REGISTRY}" | sed -e 's/^https:\/\///g')
-  if uses "${INPUT_REGISTRY}" && ! isPartOfTheName "${REGISTRY_NO_PROTOCOL}"; then
+  if [ -n "$INPUT_REGISTRY" ] && [[ ${INPUT_NAME} == *${REGISTRY_NO_PROTOCOL}* ]]; then
     INPUT_NAME="${REGISTRY_NO_PROTOCOL}/${INPUT_NAME}"
   fi
 
-  if uses "${INPUT_TAGS}"; then
-    TAGS=$(echo "${INPUT_TAGS}" | sed "s/,/ /g")
+  echo "${INPUT_PASSWORD}" | docker login -u "${INPUT_USERNAME}" --password-stdin "${INPUT_REGISTRY}"
+
+  if [ -n "$INPUT_TAGS" ]; then
+    TAGS=${INPUT_TAGS//,/ }
   else 
-    translateDockerTag
+    local BRANCH
+    BRANCH=$(echo "${GITHUB_REF}" | sed -e "s|refs/heads|/|g" | sed -e "s|/|-|g")
+
+    # Has a custom tag
+    if [[ $INPUT_NAME =~ ':' ]]; then
+      TAGS=$(echo "${INPUT_NAME}" | cut -d':' -f2)
+      INPUT_NAME=$(echo "${INPUT_NAME}" | cut -d':' -f1)
+    elif [ "${BRANCH}" = "master" ]; then
+      TAGS="latest latest-${GITHUB_SHORT_SHA}"
+    elif [[ "$GITHUB_REF" =~ 'refs/tags' ]] && [ "${INPUT_TAG_NAMES}" = "true" ]; then
+      TAGS=${GITHUB_REF//refs\/tags/}
+    elif [[ "$GITHUB_REF" =~ 'refs/tags' ]]; then
+      TAGS="latest"
+    elif [[ "$GITHUB_REF" =~ 'refs/pull' ]]; then
+      TAGS="${GITHUB_SHA}"
+    else
+      TAGS="${BRANCH} ${BRANCH}-${GITHUB_SHORT_SHA}"
+    fi;
+
+    # Always tag with the full SHA
+    if [[ ! $TAGS =~ $GITHUB_SHA ]]; then
+      TAGS="${TAGS} ${GITHUB_SHA}"
+    fi
+
   fi
+
+  if [ "${INPUT_SNAPSHOT}" = "true" ]; then
+    local TIMESTAMP
+    TIMESTAMP=$(date +%Y%m%d%H%M%S)
+    local SNAPSHOT_TAG="${TIMESTAMP}${GITHUB_SHORT_SHA}"
+    TAGS="${TAGS} ${SNAPSHOT_TAG}"
+    echo ::set-output name=snapshot-tag::"${SNAPSHOT_TAG}"
+  fi
+
   echo "TAGS=$TAGS"
-
-  if uses "${INPUT_WORKDIR}"; then
-    changeWorkingDirectory
-  fi
-
-  echo ${INPUT_PASSWORD} | docker login -u ${INPUT_USERNAME} --password-stdin ${INPUT_REGISTRY}
-
-  FIRST_TAG=$(echo $TAGS | cut -d ' ' -f1)
-  DOCKERNAME="${INPUT_NAME}:${FIRST_TAG}"
-  BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
-  CONTEXT="."
-
-  if uses "${INPUT_DOCKERFILE}"; then
-    useCustomDockerfile
-  fi
-  if uses "${INPUT_BUILDARGS}"; then
-    addBuildArgs
-  fi
-  if uses "${INPUT_CONTEXT}"; then
-    CONTEXT="${INPUT_CONTEXT}"
-  fi
-  if usesBoolean "${INPUT_CACHE}"; then
-    useBuildCache
-  fi
-  if usesBoolean "${INPUT_SNAPSHOT}"; then
-    useSnapshot
-  fi
-
-  push
-
-  echo "::set-output name=tag::${FIRST_TAG}"
-  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${DOCKERNAME})
-  echo "::set-output name=digest::${DIGEST}"
-
-  docker logout
 }
 
 function sanitize() {
@@ -84,99 +85,59 @@ function sanitize() {
   fi
 }
 
-function isPartOfTheName() {
-  [ $(echo "${INPUT_NAME}" | sed -e "s/${1}//g") != "${INPUT_NAME}" ]
-}
-
-function translateDockerTag() {
-  local SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-  local BRANCH=$(echo ${GITHUB_REF} | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
-  if hasCustomTag; then
-    TAGS=$(echo ${INPUT_NAME} | cut -d':' -f2)
-    INPUT_NAME=$(echo ${INPUT_NAME} | cut -d':' -f1)
-  elif isOnMaster; then
-    TAGS="latest latest-${SHORT_SHA}"
-  elif isGitTag && usesBoolean "${INPUT_TAG_NAMES}"; then
-    TAGS=$(echo ${GITHUB_REF} | sed -e "s/refs\/tags\///g")
-  elif isGitTag; then
-    TAGS="latest"
-  elif isPullRequest; then
-    TAGS="${GITHUB_SHA}"
-  else
-    TAGS="${BRANCH} ${BRANCH}-${SHORT_SHA}"
-  fi;
-
-  # Always tag with the full SHA
-  if [[ ! $TAGS =~ $GITHUB_SHA ]]; then
-    TAGS="${TAGS} ${GITHUB_SHA}"
+function cicd_build() {
+  if [ -e "${INPUT_WORKDIR}" ]; then
+    cd "${INPUT_WORKDIR}"
   fi
-}
 
-function hasCustomTag() {
-  [ $(echo "${INPUT_NAME}" | sed -e "s/://g") != "${INPUT_NAME}" ]
-}
+  FIRST_TAG=$(echo "$TAGS" | cut -d ' ' -f1)
+  DOCKERNAME="${INPUT_NAME}:${FIRST_TAG}"
+  BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
+  CONTEXT="."
 
-function isOnMaster() {
-  [ "${BRANCH}" = "master" ]
-}
-
-function isGitTag() {
-  [ $(echo "${GITHUB_REF}" | sed -e "s/refs\/tags\///g") != "${GITHUB_REF}" ]
-}
-
-function isPullRequest() {
-  [ $(echo "${GITHUB_REF}" | sed -e "s/refs\/pull\///g") != "${GITHUB_REF}" ]
-}
-
-function changeWorkingDirectory() {
-  cd "${INPUT_WORKDIR}"
-}
-
-function useCustomDockerfile() {
-  BUILDPARAMS="${BUILDPARAMS} -f ${INPUT_DOCKERFILE}"
-}
-
-function addBuildArgs() {
-  for ARG in $(echo "${INPUT_BUILDARGS}" | tr ',' '\n'); do
-    BUILDPARAMS="${BUILDPARAMS} --build-arg ${ARG}"
-    echo "::add-mask::${ARG}"
-  done
-}
-
-function useBuildCache() {
-  if docker pull ${DOCKERNAME} 2>/dev/null; then
-    BUILDPARAMS="$BUILDPARAMS --cache-from ${DOCKERNAME}"
+  if [ -n "${INPUT_DOCKERFILE}" ]; then
+    BUILDPARAMS="${BUILDPARAMS} -f ${INPUT_DOCKERFILE}"
   fi
-}
+  if [ -n "${INPUT_BUILDARGS}" ]; then
+    for ARG in $(echo "${INPUT_BUILDARGS}" | tr ',' '\n'); do
+      BUILDPARAMS="${BUILDPARAMS} --build-arg ${ARG}"
+      echo "::add-mask::${ARG}"
+    done
+  fi
+  if [ -n "${INPUT_CONTEXT}" ]; then
+    CONTEXT="${INPUT_CONTEXT}"
+  fi
+  if [ "${INPUT_CACHE}" = "true" ]; then
+    if docker pull "${DOCKERNAME}" 2>/dev/null; then
+      BUILDPARAMS="$BUILDPARAMS --cache-from ${DOCKERNAME}"
+    fi
+  fi
 
-function uses() {
-  [ ! -z "${1}" ]
-}
-
-function usesBoolean() {
-  [ ! -z "${1}" ] && [ "${1}" = "true" ]
-}
-
-function useSnapshot() {
-  local TIMESTAMP=`date +%Y%m%d%H%M%S`
-  local SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-  local SNAPSHOT_TAG="${TIMESTAMP}${SHORT_SHA}"
-  TAGS="${TAGS} ${SNAPSHOT_TAG}"
-  echo ::set-output name=snapshot-tag::"${SNAPSHOT_TAG}"
-}
-
-function push() {
   local BUILD_TAGS=""
   for TAG in ${TAGS}
   do
     BUILD_TAGS="${BUILD_TAGS}-t ${INPUT_NAME}:${TAG} "
   done
-  docker build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}
+  docker build "${INPUT_BUILDOPTIONS}" "${BUILDPARAMS}" "${BUILD_TAGS}" "${CONTEXT}"
 
+  echo "::set-output name=tag::${FIRST_TAG}"
+  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DOCKERNAME}")
+  echo "::set-output name=digest::${DIGEST}"
+}
+
+function cicd_push() {
   for TAG in ${TAGS}
   do
     docker push "${INPUT_NAME}:${TAG}"
   done
 }
 
-main
+function cicd_all() {
+    cicd_init
+
+    cicd_build
+
+    cicd_push
+
+    docker logout
+}
