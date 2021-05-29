@@ -123,18 +123,18 @@ function docker_build() {
     BUILD_TAGS="${BUILD_TAGS}-t ${INPUT_NAME}:${TAG} "
   done
   echo "docker build ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}"
-  docker build ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}
-
-  echo "::set-output name=tag::${FIRST_TAG}"
-  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${DOCKERNAME})
-  echo "::set-output name=digest::${DIGEST}"
+  eval "docker build ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}"
 }
 
 function docker_push() {
   for TAG in ${TAGS}
   do
-    docker push "${INPUT_NAME}:${TAG}"
+    eval "docker push ${INPUT_NAME}:${TAG}"
   done
+
+  echo "::set-output name=tag::${FIRST_TAG}"
+  DIGEST=$("docker inspect --format='{{index .RepoDigests 0}}' ${DOCKERNAME}")
+  echo "::set-output name=digest::${DIGEST}"
 }
 
 function docker_all() {
