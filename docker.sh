@@ -133,7 +133,7 @@ function docker_push() {
   done
 
   echo "::set-output name=tag::${FIRST_TAG}"
-  DIGEST=$("docker inspect --format='{{index .RepoDigests 0}}' ${DOCKERNAME}")
+  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${DOCKERNAME})
   echo "::set-output name=digest::${DIGEST}"
 }
 
