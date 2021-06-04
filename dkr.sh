@@ -7,9 +7,9 @@ function dkr_init() {
   echo "" # see https://github.com/actions/toolkit/issues/168
 
   # Aapt to be compatible with artifactory registry
-  _DKR_REGISTRY=$ARTIFACTORY_dkr_REGISTRY
-  _DKR_USERNAME=${dkr_USERNAME:-$ARTIFACTORY_USER}
-  _DKR_PASSWORD=${dkr_PASSWORD:-$ARTIFACTORY_PWD}
+  _DKR_REGISTRY=$ARTIFACTORY_DOCKER_REGISTRY
+  _DKR_USERNAME=${DOCKER_USERNAME:-$ARTIFACTORY_USER}
+  _DKR_PASSWORD=${DOCKER_PASSWORD:-$ARTIFACTORY_PWD}
   _DKR_REPO=${GITHUB_REPOSITORY:-$TRAVIS_REPO_SLUG}
 
   _GIT_SHA=${GITHUB_SHA:-$TRAVIS_COMMIT}
@@ -34,9 +34,9 @@ function dkr_init() {
   echo "_GIT_SHA=${_GIT_SHA}"
   echo "_GIT_BRANCH=${_GIT_BRANCH}"
 
-  sanitize "${_DKR_REPO}" "name"
-  sanitize "${_DKR_USERNAME}" "username"
-  sanitize "${_DKR_PASSWORD}" "password"
+  dkr_sanitize "${_DKR_REPO}" "name"
+  dkr_sanitize "${_DKR_USERNAME}" "username"
+  dkr_sanitize "${_DKR_PASSWORD}" "password"
 
   local REGISTRY_NO_PROTOCOL
   REGISTRY_NO_PROTOCOL=${_DKR_REGISTRY/https:\/\//}
@@ -79,7 +79,6 @@ function dkr_build() {
     cd "${INPUT_WORKDIR}"
   fi
 
-  FIRST_TAG=$(echo "$_DKR_TAGS" | cut -d ' ' -f1)
   BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$_GIT_SHA"
   CONTEXT="."
 
