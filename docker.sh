@@ -16,11 +16,11 @@ function docker_init() {
   if [[ "$GITHUB_REF" =~ 'refs/_DKR_TAGS/' ]]; then
     _GIT_TAG=${GITHUB_REF//refs\/_DKR_TAGS\//}
   else
-    _GIT_TAG=${_GIT_TAG:-TRAVIS_TAG}
+    _GIT_TAG=${_GIT_TAG:-$TRAVIS_TAG}
   fi
 
   # If it's a pr the head/originator branch.
-  _GIT_BRANCH=${GITHUB_HEAD_REF:-TRAVIS_PULL_REQUEST_BRANCH}
+  _GIT_BRANCH=${GITHUB_HEAD_REF:-$TRAVIS_PULL_REQUEST_BRANCH}
 
   if [[ "$GITHUB_REF" =~ 'refs/heads/' ]]; then
     _GIT_BRANCH=${GITHUB_REF//refs\/heads\//}
@@ -39,7 +39,7 @@ function docker_init() {
   sanitize "${_DKR_PASSWORD}" "password"
 
   local REGISTRY_NO_PROTOCOL
-  REGISTRY_NO_PROTOCOL=$(echo "${_DKR_REGISTRY}" | sed -e 's/^https:\/\///g')
+  REGISTRY_NO_PROTOCOL=${_DKR_REGISTRY/https:\/\//}
   if [ -n "$_DKR_REGISTRY" ] && [[ ${_DKR_REPO} == *${REGISTRY_NO_PROTOCOL}* ]]; then
     _DKR_REPO="${REGISTRY_NO_PROTOCOL}/${_DKR_REPO}"
   fi
@@ -111,6 +111,7 @@ function docker_build() {
 function docker_push() {
   for TAG in ${_DKR_TAGS}
   do
+    echo "docker push ${_DKR_REPO}:${TAG}"
     eval "docker push ${_DKR_REPO}:${TAG}"
   done
 }
