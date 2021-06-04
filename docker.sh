@@ -3,13 +3,13 @@
 # Copyright 2020 Adevinta
 set -e
 
-function docker_init() {
+function dkr_init() {
   echo "" # see https://github.com/actions/toolkit/issues/168
 
   # Aapt to be compatible with artifactory registry
-  _DKR_REGISTRY=$ARTIFACTORY_DOCKER_REGISTRY
-  _DKR_USERNAME=${DOCKER_USERNAME:-$ARTIFACTORY_USER}
-  _DKR_PASSWORD=${DOCKER_PASSWORD:-$ARTIFACTORY_PWD}
+  _DKR_REGISTRY=$ARTIFACTORY_dkr_REGISTRY
+  _DKR_USERNAME=${dkr_USERNAME:-$ARTIFACTORY_USER}
+  _DKR_PASSWORD=${dkr_PASSWORD:-$ARTIFACTORY_PWD}
   _DKR_REPO=${GITHUB_REPOSITORY:-$TRAVIS_REPO_SLUG}
 
   _GIT_SHA=${GITHUB_SHA:-$TRAVIS_COMMIT}
@@ -67,14 +67,14 @@ function docker_init() {
   echo "_DKR_TAGS=$_DKR_TAGS"
 }
 
-function sanitize() {
+function dkr_sanitize() {
   if [ -z "${1}" ]; then
     >&2 echo "Unable to find the ${2}. Did you set with.${2}?"
     exit 1
   fi
 }
 
-function docker_build() {
+function dkr_build() {
   if [ -e "${INPUT_WORKDIR}" ]; then
     cd "${INPUT_WORKDIR}"
   fi
@@ -108,7 +108,7 @@ function docker_build() {
   eval "docker build ${BUILDPARAMS} ${BUILDTAGS} ${CONTEXT}"
 }
 
-function docker_push() {
+function dkr_push() {
   for TAG in ${_DKR_TAGS}
   do
     echo "docker push ${_DKR_REPO}:${TAG}"
@@ -116,14 +116,14 @@ function docker_push() {
   done
 }
 
-function docker_all() {
-    docker_init
+function dkr_all() {
+    dkr_init
 
-    docker_build
+    dkr_build
 
-    docker_push
+    dkr_push
 
     docker logout
 }
 
-docker_init
+dkr_init
