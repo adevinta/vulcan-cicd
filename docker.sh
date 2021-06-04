@@ -94,6 +94,10 @@ function docker_build() {
   BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
   CONTEXT="."
 
+  if [ "${DOCKER_BUILDKIT}" = "1" ]; then
+    BUILDPARAMS="${BUILDPARAMS} --progress=plain"
+  fi
+
   if [ -n "${INPUT_BUILDOPTIONS}" ]; then
     BUILDPARAMS="${BUILDPARAMS} ${INPUT_BUILDOPTIONS}"
   fi
