@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Copyright 2020 Adevinta
-set -ev
-
+set -e
 
 function docker_init() {
   echo "" # see https://github.com/actions/toolkit/issues/168
