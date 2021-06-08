@@ -125,4 +125,14 @@ function dkr_all() {
     docker logout
 }
 
+function dkr_dockerhub_ratelimit() {
+  if [ -n "${DOCKER_USERNAME}" ]; then
+    local DKRTOKEN
+    echo "Getting token from dockerhub"
+    DKRTOKEN=$(curl -s --user "$DOCKER_USERNAME:$DOCKER_PASSWORD" "https://auth.docker.io/token?service=registry.docker.io&scope=repository:ratelimitpreview/test:pull" | jq -r .token)
+    echo "Getting ratelimit"
+    curl -s --head -H "Authorization: Bearer $DKRTOKEN" https://registry-1.docker.io/v2/ratelimitpreview/test/manifests/latest
+  fi
+}
+
 dkr_init
