@@ -44,6 +44,7 @@ function dkr_init() {
     _DKR_REPO="${REGISTRY_NO_PROTOCOL}/${_DKR_REPO}"
   fi
 
+  echo "docker login -u ${_DKR_USERNAME} ${_DKR_REGISTRY}"
   echo "${_DKR_PASSWORD}" | docker login -u "${_DKR_USERNAME}" --password-stdin "${_DKR_REGISTRY}"
 
   local BRANCH
