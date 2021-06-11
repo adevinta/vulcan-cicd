@@ -3,69 +3,83 @@
 # Copyright 2020 Adevinta
 set -e
 
+########################
+# Initalices the environment
+#   Logins in the registry
+#   Calculates the tags for the docker images based on the git commit, branch, tag:
+#   1.- If tag exists the tag
+#   2.- If branch 3 tags:  branch branch-shortsha fullsha  (if branch=master rename to latest)
+# Envs:
+#   ARTIFACTORY_DOCKER_REGISTRY: Optinal registry to use, defaults to dockerhub
+#   DOCKER_USERNAME / ARTIFCATORY_USER: Required, the registry user
+#   DOCKER_PASSWORD / ARTIFACTORY_PASSWORD: Required, password/token for the registry
+#   GITHUB_REPOSITORY / TRAVIS_REPO_SLUG: Provided by Travis / GitHub Actions, repository name.
+#   GITHUB_SHA / TRAVIS_COMMIT: Provided by Travis / GitHub Actions, git commit.
+#   GITHUB_REF / TRAVIS_TAG: Provided by Travis / GitHub Actins.
+#   GITHUB_HEAD_REF / TRAVIS_PULL_REQUEST_BRANCH: Provided by Travis / GitHub Actins.
+#   GITHUB_REF / TRAVIS_BRANCH: Provided by Travis / GitHub Actins.
+# Sets those env vars:
+#   DKR_REGISTRY DKR_USERNAME DKR_PASSWORD DKR_REPO
+#   DKR_GIT_TAG DKR_GIT_BRANCH DKR_GIT_SHA DKR_GIT_SHORT_SHA
+#   DKR_TAGS
 function dkr_init() {
-  echo "" # see https://github.com/actions/toolkit/issues/168
-
   # Aapt to be compatible with artifactory registry
-  _DKR_REGISTRY=$ARTIFACTORY_DOCKER_REGISTRY
-  _DKR_USERNAME=${DOCKER_USERNAME:-$ARTIFACTORY_USER}
-  _DKR_PASSWORD=${DOCKER_PASSWORD:-$ARTIFACTORY_PWD}
-  _DKR_REPO=${GITHUB_REPOSITORY:-$TRAVIS_REPO_SLUG}
+  DKR_REGISTRY=$ARTIFACTORY_DOCKER_REGISTRY
+  DKR_USERNAME=${DOCKER_USERNAME:-$ARTIFACTORY_USER}
+  DKR_PASSWORD=${DOCKER_PASSWORD:-$ARTIFACTORY_PWD}
+  DKR_REPO=${GITHUB_REPOSITORY:-$TRAVIS_REPO_SLUG}
 
-  _GIT_SHA=${GITHUB_SHA:-$TRAVIS_COMMIT}
-  if [[ "$GITHUB_REF" =~ 'refs/_DKR_TAGS/' ]]; then
-    _GIT_TAG=${GITHUB_REF//refs\/_DKR_TAGS\//}
+  DKR_GIT_SHA=${GITHUB_SHA:-$TRAVIS_COMMIT}
+  if [[ "$GITHUB_REF" =~ 'refs/DKR_TAGS/' ]]; then
+    DKR_GIT_TAG=${GITHUB_REF//refs\/DKR_TAGS\//}
   else
-    _GIT_TAG=${_GIT_TAG:-$TRAVIS_TAG}
+    DKR_GIT_TAG=${DKR_GIT_TAG:-$TRAVIS_TAG}
   fi
 
   # If it's a pr the head/originator branch.
-  _GIT_BRANCH=${GITHUB_HEAD_REF:-$TRAVIS_PULL_REQUEST_BRANCH}
+  DKR_GIT_BRANCH=${GITHUB_HEAD_REF:-$TRAVIS_PULL_REQUEST_BRANCH}
 
   if [[ "$GITHUB_REF" =~ 'refs/heads/' ]]; then
-    _GIT_BRANCH=${GITHUB_REF//refs\/heads\//}
+    DKR_GIT_BRANCH=${GITHUB_REF//refs\/heads\//}
   else
-    _GIT_BRANCH=$TRAVIS_BRANCH
+    DKR_GIT_BRANCH=$TRAVIS_BRANCH
   fi
 
-  _GIT_SHORT_SHA=$(echo "${_GIT_SHA}" | cut -c1-7)
+  DKR_GIT_SHORT_SHA=$(echo "${DKR_GIT_SHA}" | cut -c1-7)
 
-  echo "_DKR_REPO=${_DKR_REPO}"
-  echo "_GIT_SHA=${_GIT_SHA}"
-  echo "_GIT_BRANCH=${_GIT_BRANCH}"
-
-  dkr_sanitize "${_DKR_REPO}" "name"
-  dkr_sanitize "${_DKR_USERNAME}" "username"
-  dkr_sanitize "${_DKR_PASSWORD}" "password"
+  dkr_sanitize "${DKR_REPO}" "name"
+  dkr_sanitize "${DKR_USERNAME}" "username"
+  dkr_sanitize "${DKR_PASSWORD}" "password"
 
   local REGISTRY_NO_PROTOCOL
-  REGISTRY_NO_PROTOCOL=${_DKR_REGISTRY/https:\/\//}
-  if [ -n "$_DKR_REGISTRY" ] && [[ ${_DKR_REPO} == *${REGISTRY_NO_PROTOCOL}* ]]; then
-    _DKR_REPO="${REGISTRY_NO_PROTOCOL}/${_DKR_REPO}"
+  REGISTRY_NO_PROTOCOL=${DKR_REGISTRY/https:\/\//}
+  if [ -n "$DKR_REGISTRY" ] && [[ ${DKR_REPO} == *${REGISTRY_NO_PROTOCOL}* ]]; then
+    DKR_REPO="${REGISTRY_NO_PROTOCOL}/${DKR_REPO}"
   fi
 
-  echo "docker login -u ${_DKR_USERNAME} ${_DKR_REGISTRY}"
-  echo "${_DKR_PASSWORD}" | docker login -u "${_DKR_USERNAME}" --password-stdin "${_DKR_REGISTRY}"
+  echo "DKR_REPO=${DKR_REPO}"
+  echo "DKR_GIT_SHA=${DKR_GIT_SHA}"
+  echo "DKR_GIT_BRANCH=${DKR_GIT_BRANCH}"
+  echo "DKR_GIT_TAG=${DKR_GIT_TAG}"
+
+  echo "docker login -u ${DKR_USERNAME} ${DKR_REGISTRY}"
+  echo "${DKR_PASSWORD}" | docker login -u "${DKR_USERNAME}" --password-stdin "${DKR_REGISTRY}"
 
   local BRANCH
 
-  if [ -n "$_GIT_TAG" ]; then
-    _DKR_TAGS=$_GIT_TAG
-  elif [ -n "$_GIT_BRANCH" ]; then
-    BRANCH=${_GIT_BRANCH//\//-}
+  if [ -n "$DKR_GIT_TAG" ]; then
+    DKR_TAGS=$DKR_GIT_TAG
+  elif [ -n "$DKR_GIT_BRANCH" ]; then
+    BRANCH=${DKR_GIT_BRANCH//\//-}
     if [ "$BRANCH" = "master" ]; then
       BRANCH=latest
     fi
-    _DKR_TAGS="${BRANCH} ${BRANCH}-${_GIT_SHORT_SHA} ${_GIT_SHA}"
+    DKR_TAGS="${BRANCH} ${BRANCH}-${DKR_GIT_SHORT_SHA} ${DKR_GIT_SHA}"
   else
-    _DKR_TAGS="${_GIT_SHA}"
+    DKR_TAGS="${DKR_GIT_SHA}"
   fi;
 
-  if [ "${INPUT_SNAPSHOT}" = "true" ]; then
-    _DKR_TAGS="${_DKR_TAGS} $(date +%Y%m%d%H%M%S)${_GIT_SHORT_SHA}"
-  fi
-
-  echo "_DKR_TAGS=$_DKR_TAGS"
+  echo "DKR_TAGS=$DKR_TAGS"
 }
 
 function dkr_sanitize() {
@@ -75,47 +89,58 @@ function dkr_sanitize() {
   fi
 }
 
+########################
+# Builds the image
+# Envs:
+#   DKR_CONTEXT: Optional Build context defaults to .
+#   DKR_DOCKERFILE: Optional path to a custom Dockerfile
+#   DKR_BUILDOPTIONS: Optional Additional list of parameters to add to the build command.
+#   DKR_BUILDARGS: Optional list of build-args to add (i.e. FOO=3 BAR=5)
+# Uses those envs:
+#   DKR_GIT_SHA: Commit id
+#   DKR_TAGS: List of tags to add to the image 
 function dkr_build() {
-  if [ -e "${INPUT_WORKDIR}" ]; then
-    cd "${INPUT_WORKDIR}"
+  local CONTEXT BUILDPARAMS BUILDTAGS
+  CONTEXT=${DKR_CONTEXT:-.}
+  BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$DKR_GIT_SHA"
+  BUILDTAGS=""
+
+  if [ -n "${DKR_BUILDOPTIONS}" ]; then
+    BUILDPARAMS="${BUILDPARAMS} ${DKR_BUILDOPTIONS}"
   fi
 
-  BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$_GIT_SHA"
-  CONTEXT="."
-
-  if [ -n "${INPUT_BUILDOPTIONS}" ]; then
-    BUILDPARAMS="${BUILDPARAMS} ${INPUT_BUILDOPTIONS}"
+  if [ -n "${DKR_DOCKERFILE}" ]; then
+    BUILDPARAMS="${BUILDPARAMS} -f ${DKR_DOCKERFILE}"
   fi
-
-  if [ -n "${INPUT_DOCKERFILE}" ]; then
-    BUILDPARAMS="${BUILDPARAMS} -f ${INPUT_DOCKERFILE}"
-  fi
-  if [ -n "${INPUT_BUILDARGS}" ]; then
-    for ARG in $(echo "${INPUT_BUILDARGS}" | tr ',' '\n'); do
+  if [ -n "${DKR_BUILDARGS}" ]; then
+    for ARG in $(echo "${DKR_BUILDARGS}" | tr ',' '\n'); do
       BUILDPARAMS="${BUILDPARAMS} --build-arg ${ARG}"
     done
   fi
-  if [ -n "${INPUT_CONTEXT}" ]; then
-    CONTEXT="${INPUT_CONTEXT}"
-  fi
-
-  local BUILDTAGS=""
-  for TAG in ${_DKR_TAGS}
+  for TAG in ${DKR_TAGS}
   do
-    BUILDTAGS="${BUILDTAGS}-t ${_DKR_REPO}:${TAG} "
+    BUILDTAGS="${BUILDTAGS}-t ${DKR_REPO}:${TAG} "
   done
   echo "docker build ${BUILDPARAMS} ${BUILDTAGS} ${CONTEXT}"
   eval "docker build ${BUILDPARAMS} ${BUILDTAGS} ${CONTEXT}"
 }
 
+########################
+# Pushes all the image tags
+# Envs:
+#   DKR_TAGS: space separated list of image
 function dkr_push() {
-  for TAG in ${_DKR_TAGS}
+  for TAG in ${DKR_TAGS}
   do
-    echo "docker push ${_DKR_REPO}:${TAG}"
-    eval "docker push ${_DKR_REPO}:${TAG}"
+    echo "docker push ${DKR_REPO}:${TAG}"
+    eval "docker push ${DKR_REPO}:${TAG}"
   done
 }
 
+########################
+# One single process.
+# Envs:
+#   DKR_TAGS: space separated list of image
 function dkr_all() {
     dkr_init
 
@@ -126,6 +151,11 @@ function dkr_all() {
     docker logout
 }
 
+########################
+# Shows information about the rate limit of the current user in dockerhub
+# Envs:
+#   DOCKER_USERNAME
+#   DOCKER_PASSWORD 
 function dkr_dockerhub_ratelimit() {
   if [ -n "${DOCKER_USERNAME}" ]; then
     local DKRTOKEN
