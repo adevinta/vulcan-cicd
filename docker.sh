@@ -107,7 +107,7 @@ function translateDockerTag() {
     # adapted from https://gist.github.com/rverst/1f0b97da3cbeb7d93f4986df6e8e5695 to accept major (v1) and minor (v1.1) 
     if [[ $TAGS =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
       TAGS="${TAGS:1}"
-      echo "Removed v prefix from from semver tag ${TAGS}"
+      echo "Removed v prefix from semver tag ${TAGS}"
     fi
 
   elif isOnMaster; then
