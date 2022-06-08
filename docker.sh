@@ -24,7 +24,7 @@ function main() {
   if [ "$GITHUB_REF_TYPE" == "tag" ]; then
     INPUT_TAG=${GITHUB_REF_NAME}
   else
-    INPUT_TAG=${TAVIS_TAG}
+    INPUT_TAG=${TRAVIS_TAG}
   fi
 
   echo "INPUT_NAME=${INPUT_NAME}"
