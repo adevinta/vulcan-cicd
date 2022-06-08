@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2020 Adevinta
-set -ev
+set -e
 
 
 function main() {
@@ -30,6 +30,7 @@ function main() {
   echo "INPUT_NAME=${INPUT_NAME}"
   echo "GITHUB_SHA=${GITHUB_SHA}"
   echo "GITHUB_REF=${GITHUB_REF}"
+  echo "INPUT_TAG=${INPUT_TAG}"
 
   sanitize "${INPUT_NAME}" "name"
   sanitize "${INPUT_USERNAME}" "username"
@@ -101,13 +102,12 @@ function translateDockerTag() {
   BRANCH=$(echo ${GITHUB_REF} | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
   if [ -n "$INPUT_TAG" ]; then
     TAGS=$INPUT_TAG
-    echo "custom-tag ${TAGS}"
 
     # If starts with v and is semver remove the "v" prefix
     # adapted from https://gist.github.com/rverst/1f0b97da3cbeb7d93f4986df6e8e5695 to accept major (v1) and minor (v1.1) 
     if [[ $TAGS =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
       TAGS="${TAGS:1}"
-      echo "Removed v from tag ${TAGS}"
+      echo "Removed v prefix from from semver tag ${TAGS}"
     fi
 
   elif isOnMaster; then
