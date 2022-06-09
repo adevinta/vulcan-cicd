@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2020 Adevinta
-set -ev
+set -e
 
 
 function main() {
@@ -18,36 +18,40 @@ function main() {
   INPUT_NAME=${INPUT_NAME:-$GITHUB_REPOSITORY}
   INPUT_NAME=${INPUT_NAME:-$TRAVIS_REPO_SLUG}
   GITHUB_SHA=${GITHUB_SHA:-$TRAVIS_COMMIT}
+  SHORT_SHA=${GITHUB_SHA::7}
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_PULL_REQUEST_BRANCH}   # In case of pull request we want the originating branch, not the target.
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_BRANCH}
+
+  if [ "$GITHUB_REF_TYPE" == "tag" ]; then
+    INPUT_TAG=${GITHUB_REF_NAME}
+  else
+    INPUT_TAG=${TRAVIS_TAG}
+  fi
 
   echo "INPUT_NAME=${INPUT_NAME}"
   echo "GITHUB_SHA=${GITHUB_SHA}"
   echo "GITHUB_REF=${GITHUB_REF}"
+  echo "INPUT_TAG=${INPUT_TAG}"
 
   sanitize "${INPUT_NAME}" "name"
   sanitize "${INPUT_USERNAME}" "username"
   sanitize "${INPUT_PASSWORD}" "password"
 
-  REGISTRY_NO_PROTOCOL=$(echo "${INPUT_REGISTRY}" | sed -e 's/^https:\/\///g')
+  REGISTRY_NO_PROTOCOL=${INPUT_REGISTRY#"https://"}
   if uses "${INPUT_REGISTRY}" && ! isPartOfTheName "${REGISTRY_NO_PROTOCOL}"; then
     INPUT_NAME="${REGISTRY_NO_PROTOCOL}/${INPUT_NAME}"
   fi
 
-  if uses "${INPUT_TAGS}"; then
-    TAGS=$(echo "${INPUT_TAGS}" | sed "s/,/ /g")
-  else 
-    translateDockerTag
-  fi
+  translateDockerTag
   echo "TAGS=$TAGS"
 
   if uses "${INPUT_WORKDIR}"; then
     changeWorkingDirectory
   fi
 
-  echo ${INPUT_PASSWORD} | docker login -u ${INPUT_USERNAME} --password-stdin ${INPUT_REGISTRY}
+  echo "${INPUT_PASSWORD}" | docker login -u "${INPUT_USERNAME}" --password-stdin "${INPUT_REGISTRY}"
 
-  FIRST_TAG=$(echo $TAGS | cut -d ' ' -f1)
+  FIRST_TAG=$(echo "$TAGS" | cut -d ' ' -f1)
   DOCKERNAME="${INPUT_NAME}:${FIRST_TAG}"
   BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
   CONTEXT="."
@@ -85,26 +89,32 @@ function sanitize() {
 }
 
 function isPartOfTheName() {
-  [ $(echo "${INPUT_NAME}" | sed -e "s/${1}//g") != "${INPUT_NAME}" ]
+  [ "$(echo "${INPUT_NAME}" | sed -e "s/${1}//g")" != "${INPUT_NAME}" ]
 }
 
 function translateDockerTag() {
-  local SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-  local BRANCH=$(echo ${GITHUB_REF} | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
-  if hasCustomTag; then
-    TAGS=$(echo ${INPUT_NAME} | cut -d':' -f2)
-    INPUT_NAME=$(echo ${INPUT_NAME} | cut -d':' -f1)
+  local BRANCH
+  BRANCH=$(echo "${GITHUB_REF}" | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
+  if isGitTag; then
+    TAGS=$INPUT_TAG
+
+    # If starts with v and it is semver remove the "v" prefix
+    # adapted from https://gist.github.com/rverst/1f0b97da3cbeb7d93f4986df6e8e5695 to accept major (v1) and minor (v1.1) 
+    if [[ $TAGS =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
+      TAGS="${TAGS:1}"
+      echo "Removed v prefix from semver tag ${TAGS}"
+    fi
+
+    # If is master and is not a pre-release
+    if [[ $TAGS =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
+      TAGS="$TAGS latest"
+    fi
+
   elif isOnMaster; then
-    TAGS="latest latest-${SHORT_SHA}"
-  elif isGitTag && usesBoolean "${INPUT_TAG_NAMES}"; then
-    TAGS=$(echo ${GITHUB_REF} | sed -e "s/refs\/tags\///g")
-  elif isGitTag; then
-    TAGS="latest"
-  elif isPullRequest; then
-    TAGS="${GITHUB_SHA}"
+    TAGS="edge"
   else
     TAGS="${BRANCH} ${BRANCH}-${SHORT_SHA}"
-  fi;
+  fi
 
   # Always tag with the full SHA
   if [[ ! $TAGS =~ $GITHUB_SHA ]]; then
@@ -112,20 +122,12 @@ function translateDockerTag() {
   fi
 }
 
-function hasCustomTag() {
-  [ $(echo "${INPUT_NAME}" | sed -e "s/://g") != "${INPUT_NAME}" ]
-}
-
 function isOnMaster() {
-  [ "${BRANCH}" = "master" ]
+  [[ "${BRANCH}" =~ ^(master|main)$ ]]
 }
 
 function isGitTag() {
-  [ $(echo "${GITHUB_REF}" | sed -e "s/refs\/tags\///g") != "${GITHUB_REF}" ]
-}
-
-function isPullRequest() {
-  [ $(echo "${GITHUB_REF}" | sed -e "s/refs\/pull\///g") != "${GITHUB_REF}" ]
+  [ -n "$INPUT_TAG" ]
 }
 
 function changeWorkingDirectory() {
@@ -144,22 +146,22 @@ function addBuildArgs() {
 }
 
 function useBuildCache() {
-  if docker pull ${DOCKERNAME} 2>/dev/null; then
+  if docker pull "${DOCKERNAME}" 2>/dev/null; then
     BUILDPARAMS="$BUILDPARAMS --cache-from ${DOCKERNAME}"
   fi
 }
 
 function uses() {
-  [ ! -z "${1}" ]
+  [ -n "${1}" ]
 }
 
 function usesBoolean() {
-  [ ! -z "${1}" ] && [ "${1}" = "true" ]
+  [ -n "${1}" ] && [ "${1}" = "true" ]
 }
 
 function useSnapshot() {
-  local TIMESTAMP=`date +%Y%m%d%H%M%S`
-  local SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+  local TIMESTAMP
+  TIMESTAMP=$(date +%Y%m%d%H%M%S)
   local SNAPSHOT_TAG="${TIMESTAMP}${SHORT_SHA}"
   TAGS="${TAGS} ${SNAPSHOT_TAG}"
   echo ::set-output name=snapshot-tag::"${SNAPSHOT_TAG}"
