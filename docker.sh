@@ -18,6 +18,7 @@ function main() {
   INPUT_NAME=${INPUT_NAME:-$GITHUB_REPOSITORY}
   INPUT_NAME=${INPUT_NAME:-$TRAVIS_REPO_SLUG}
   GITHUB_SHA=${GITHUB_SHA:-$TRAVIS_COMMIT}
+  SHORT_SHA=${GITHUB_SHA::7}
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_PULL_REQUEST_BRANCH}   # In case of pull request we want the originating branch, not the target.
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_BRANCH}
 
@@ -36,16 +37,12 @@ function main() {
   sanitize "${INPUT_USERNAME}" "username"
   sanitize "${INPUT_PASSWORD}" "password"
 
-  REGISTRY_NO_PROTOCOL=$(echo "${INPUT_REGISTRY}" | sed -e 's/^https:\/\///g')
+  REGISTRY_NO_PROTOCOL=${INPUT_REGISTRY#"https://"}
   if uses "${INPUT_REGISTRY}" && ! isPartOfTheName "${REGISTRY_NO_PROTOCOL}"; then
     INPUT_NAME="${REGISTRY_NO_PROTOCOL}/${INPUT_NAME}"
   fi
 
-  if uses "${INPUT_TAGS}"; then
-    TAGS=$(echo "${INPUT_TAGS}" | sed "s/,/ /g")
-  else 
-    translateDockerTag
-  fi
+  translateDockerTag
   echo "TAGS=$TAGS"
 
   if uses "${INPUT_WORKDIR}"; then
@@ -96,11 +93,9 @@ function isPartOfTheName() {
 }
 
 function translateDockerTag() {
-  local SHORT_SHA
-  SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
   local BRANCH
-  BRANCH=$(echo ${GITHUB_REF} | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
-  if [ -n "$INPUT_TAG" ]; then
+  BRANCH=$(echo "${GITHUB_REF}" | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
+  if isGitTag; then
     TAGS=$INPUT_TAG
 
     # If starts with v and it is semver remove the "v" prefix
@@ -167,8 +162,6 @@ function usesBoolean() {
 function useSnapshot() {
   local TIMESTAMP
   TIMESTAMP=$(date +%Y%m%d%H%M%S)
-  local SHORT_SHA
-  SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
   local SNAPSHOT_TAG="${TIMESTAMP}${SHORT_SHA}"
   TAGS="${TAGS} ${SNAPSHOT_TAG}"
   echo ::set-output name=snapshot-tag::"${SNAPSHOT_TAG}"
