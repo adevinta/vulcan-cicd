@@ -96,29 +96,34 @@ function translateDockerTag() {
   local BRANCH
   BRANCH=$(echo "${GITHUB_REF}" | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
   if isGitTag; then
-    TAGS=$INPUT_TAG
 
     # If starts with v and it is semver remove the "v" prefix
     # adapted from https://gist.github.com/rverst/1f0b97da3cbeb7d93f4986df6e8e5695 to accept major (v1) and minor (v1.1) 
-    if [[ $TAGS =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
-      TAGS="${TAGS:1}"
-      echo "Removed v prefix from semver tag ${TAGS}"
+    if [[ $INPUT_TAG =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
+      TAG="${INPUT_TAG:1}"
+    else
+      TAG=$INPUT_TAG
     fi
 
+    TAGS=$INPUT_TAG
+
     # If is master and is not a pre-release
-    if [[ $TAGS =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
+    if [[ $TAG =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
       TAGS="$TAGS latest"
+
+      IFS='.' read -a strarr <<< "$TAG"
+      if [ -n "${strarr[2]}" ]; then
+          TAGS="$TAGS ${strarr[0]}.${strarr[1]}"
+      fi
+      if [ -n "${strarr[1]}" ]; then
+          TAGS="$TAGS ${strarr[0]}"
+      fi
     fi
 
   elif isOnMaster; then
-    TAGS="edge"
+    TAGS="edge ${GITHUB_SHA}"
   else
-    TAGS="${BRANCH} ${BRANCH}-${SHORT_SHA}"
-  fi
-
-  # Always tag with the full SHA
-  if [[ ! $TAGS =~ $GITHUB_SHA ]]; then
-    TAGS="${TAGS} ${GITHUB_SHA}"
+    TAGS="${BRANCH} ${BRANCH}-${SHORT_SHA} ${GITHUB_SHA}"
   fi
 }
 
