@@ -111,7 +111,7 @@ function translateDockerTag() {
     fi
 
     # If is master and is not a pre-release
-    if isOnMaster && [[ $TAGS =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
+    if [[ $TAGS =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
       TAGS="$TAGS latest"
     fi
 
