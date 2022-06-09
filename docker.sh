@@ -103,22 +103,23 @@ function translateDockerTag() {
   if [ -n "$INPUT_TAG" ]; then
     TAGS=$INPUT_TAG
 
-    # If starts with v and is semver remove the "v" prefix
+    # If starts with v and it is semver remove the "v" prefix
     # adapted from https://gist.github.com/rverst/1f0b97da3cbeb7d93f4986df6e8e5695 to accept major (v1) and minor (v1.1) 
     if [[ $TAGS =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
       TAGS="${TAGS:1}"
       echo "Removed v prefix from semver tag ${TAGS}"
     fi
 
+    # If is master and is not a pre-release
+    if isOnMaster && [[ $TAGS =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
+      TAGS="$TAGS latest"
+    fi
+
   elif isOnMaster; then
-    TAGS="latest latest-${SHORT_SHA}"
-  elif isGitTag; then
-    TAGS="latest"
-  elif isPullRequest; then
-    TAGS="${GITHUB_SHA}"
+    TAGS="edge"
   else
     TAGS="${BRANCH} ${BRANCH}-${SHORT_SHA}"
-  fi;
+  fi
 
   # Always tag with the full SHA
   if [[ ! $TAGS =~ $GITHUB_SHA ]]; then
@@ -127,15 +128,11 @@ function translateDockerTag() {
 }
 
 function isOnMaster() {
-  [ "${BRANCH}" = "master" ]
+  [[ "${BRANCH}" =~ ^(master|main)$ ]]
 }
 
 function isGitTag() {
   [ -n "$INPUT_TAG" ]
-}
-
-function isPullRequest() {
-  [ "${GITHUB_HEAD_REF:-$TRAVIS_PULL_REQUEST_BRANCH}" != "" ]
 }
 
 function changeWorkingDirectory() {
