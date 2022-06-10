@@ -21,6 +21,7 @@ function main() {
   SHORT_SHA=${GITHUB_SHA::7}
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_PULL_REQUEST_BRANCH}   # In case of pull request we want the originating branch, not the target.
   GITHUB_REF=${GITHUB_REF:-$TRAVIS_BRANCH}
+  GIT_BRANCH=$(echo "${GITHUB_REF}" | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
 
   if [ "$GITHUB_REF_TYPE" == "tag" ]; then
     INPUT_TAG=${GITHUB_REF_NAME}
@@ -32,6 +33,17 @@ function main() {
   echo "GITHUB_SHA=${GITHUB_SHA}"
   echo "GITHUB_REF=${GITHUB_REF}"
   echo "INPUT_TAG=${INPUT_TAG}"
+  echo "GIT_BRANCH=${GIT_BRANCH}"
+
+  # Prevents building and pushing images when pull_request.
+  # This is an additional control in case we allow in Travis access to secret env variables from
+  # pull requests from forks (DOCKER_PASSWORD).
+  # This could lead to generate "edge" tags if pushed from master branch, or overwritting a branch tag.
+  # TODO: For Github Actions we should review what is the behavoiur.
+  if [ "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
+    >&2 echo "Disabled build and push on pull-requests"
+    exit 1
+  fi
 
   sanitize "${INPUT_NAME}" "name"
   sanitize "${INPUT_USERNAME}" "username"
@@ -74,9 +86,8 @@ function main() {
 
   push
 
-  echo "::set-output name=tag::${FIRST_TAG}"
-  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ${DOCKERNAME})
-  echo "::set-output name=digest::${DIGEST}"
+  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DOCKERNAME}")
+  echo "DIGEST=${DIGEST}"
 
   docker logout
 }
@@ -93,41 +104,36 @@ function isPartOfTheName() {
 }
 
 function translateDockerTag() {
-  local BRANCH
-  BRANCH=$(echo "${GITHUB_REF}" | sed -e "s/refs\/heads\///g" | sed -e "s/\//-/g")
-  if isGitTag; then
-    TAGS=$INPUT_TAG
+  if [ -n "$INPUT_TAG" ]; then
 
     # If starts with v and it is semver remove the "v" prefix
     # adapted from https://gist.github.com/rverst/1f0b97da3cbeb7d93f4986df6e8e5695 to accept major (v1) and minor (v1.1) 
-    if [[ $TAGS =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
-      TAGS="${TAGS:1}"
-      echo "Removed v prefix from semver tag ${TAGS}"
+    if [[ $INPUT_TAG =~ ^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$ ]]; then
+      TAG="${INPUT_TAG:1}"
+    else
+      TAG=$INPUT_TAG
     fi
+
+    TAGS=$TAG
 
     # If is master and is not a pre-release
-    if [[ $TAGS =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
+    if [[ $TAG =~ ^(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?(\.(0|[1-9][0-9]*))?$ ]]; then
       TAGS="$TAGS latest"
+
+      IFS='.' read -a strarr <<< "$TAG"
+      if [ -n "${strarr[2]}" ]; then
+          TAGS="$TAGS ${strarr[0]}.${strarr[1]}"
+      fi
+      if [ -n "${strarr[1]}" ]; then
+          TAGS="$TAGS ${strarr[0]}"
+      fi
     fi
 
-  elif isOnMaster; then
-    TAGS="edge"
+  elif [[ "${GIT_BRANCH}" =~ ^(master|main)$ ]]; then
+    TAGS="edge ${GITHUB_SHA}"
   else
-    TAGS="${BRANCH} ${BRANCH}-${SHORT_SHA}"
+    TAGS="${GIT_BRANCH} ${GIT_BRANCH}-${SHORT_SHA} ${GITHUB_SHA}"
   fi
-
-  # Always tag with the full SHA
-  if [[ ! $TAGS =~ $GITHUB_SHA ]]; then
-    TAGS="${TAGS} ${GITHUB_SHA}"
-  fi
-}
-
-function isOnMaster() {
-  [[ "${BRANCH}" =~ ^(master|main)$ ]]
-}
-
-function isGitTag() {
-  [ -n "$INPUT_TAG" ]
 }
 
 function changeWorkingDirectory() {
