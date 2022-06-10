@@ -33,6 +33,7 @@ function main() {
   echo "GITHUB_SHA=${GITHUB_SHA}"
   echo "GITHUB_REF=${GITHUB_REF}"
   echo "INPUT_TAG=${INPUT_TAG}"
+  echo "GIT_BRANCH=${GIT_BRANCH}"
 
   sanitize "${INPUT_NAME}" "name"
   sanitize "${INPUT_USERNAME}" "username"
