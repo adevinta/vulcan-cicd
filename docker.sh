@@ -35,6 +35,16 @@ function main() {
   echo "INPUT_TAG=${INPUT_TAG}"
   echo "GIT_BRANCH=${GIT_BRANCH}"
 
+  # Prevents building and pushing images when pull_request.
+  # This is an additional control in case we allow in Travis access to secret env variables from
+  # pull requests from forks (DOCKER_PASSWORD).
+  # This could lead to generate "edge" tags if pushed from master branch, or overwritting a branch tag.
+  # TODO: For Github Actions we should review what is the behavoiur.
+  if [ "$TRAVIS_EVENT_TYPE" == "pull_request" ]; then
+    >&2 echo "Disabled build and push on pull-requests"
+    exit 1
+  fi
+
   sanitize "${INPUT_NAME}" "name"
   sanitize "${INPUT_USERNAME}" "username"
   sanitize "${INPUT_PASSWORD}" "password"
