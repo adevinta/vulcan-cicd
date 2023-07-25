@@ -195,6 +195,6 @@ if ! docker buildx version ; then
   docker buildx version
 fi
 
-docker buildx create --use desktop-linux
+docker buildx create --use
 
 main
