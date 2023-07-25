@@ -177,14 +177,24 @@ function push() {
   local BUILD_TAGS=""
   for TAG in ${TAGS}
   do
-    BUILD_TAGS="${BUILD_TAGS}-t ${INPUT_NAME}:${TAG} "
+    BUILD_TAGS="${BUILD_TAGS}--tag ${INPUT_NAME}:${TAG} "
   done
-  docker build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}
-
-  for TAG in ${TAGS}
-  do
-    docker push "${INPUT_NAME}:${TAG}"
-  done
+  docker buildx build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}
 }
+
+# Enable buildkit
+DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-1}
+
+if ! docker buildx version ; then
+  INPUT_BUILDX_VERSION=${INPUT_BUILDX_VERSION:-v0.11.2}
+  docker version
+  echo "Buildx not available ... installing"
+  mkdir -vp ~/.docker/cli-plugins/
+  curl --silent -L "https://github.com/docker/buildx/releases/download/$INPUT_BUILDX_VERSION/buildx-$INPUT_BUILDX_VERSION.linux-amd64" > ~/.docker/cli-plugins/docker-buildx
+  chmod a+x ~/.docker/cli-plugins/docker-buildx
+  docker buildx version
+fi
+
+docker buildx create --use desktop-linux
 
 main
