@@ -179,7 +179,13 @@ function push() {
   do
     BUILD_TAGS="${BUILD_TAGS}--tag ${INPUT_NAME}:${TAG} "
   done
+
+  ( while :; do sleep 120 && echo hearthbeat; done ) &
+  pid1=$!
+
   docker buildx build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT} --push
+
+  kill -9 "$pid1"
 }
 
 # Enable buildkit
