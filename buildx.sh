@@ -140,6 +140,7 @@ function push() {
   ( for i in $(seq 30); do sleep 60 && echo "hearthbeat: ${i}m"; done ) &
   pid1=$!
 
+  echo "BUILDPARAMS=${BUILDPARAMS[*]}"
   docker buildx build "${BUILDPARAMS[@]}" --push
 
   kill -9 "$pid1"
