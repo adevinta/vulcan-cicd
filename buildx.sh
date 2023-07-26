@@ -86,9 +86,6 @@ function main() {
 
   push
 
-  DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DOCKERNAME}")
-  echo "DIGEST=${DIGEST}"
-
   docker logout
 }
 
@@ -177,14 +174,31 @@ function push() {
   local BUILD_TAGS=""
   for TAG in ${TAGS}
   do
-    BUILD_TAGS="${BUILD_TAGS}-t ${INPUT_NAME}:${TAG} "
+    BUILD_TAGS="${BUILD_TAGS}--tag ${INPUT_NAME}:${TAG} "
   done
-  docker build ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT}
 
-  for TAG in ${TAGS}
-  do
-    docker push "${INPUT_NAME}:${TAG}"
-  done
+  # See travis_wait
+  ( for i in $(seq 30); do sleep 60 && echo "hearthbeat: ${i}m"; done ) &
+  pid1=$!
+
+  INPUT_PLATFORM=${INPUT_PLATFORM:-"linux/amd64"}
+  docker buildx build --platform "$INPUT_PLATFORM" ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT} --push
+
+  kill -9 "$pid1"
 }
+
+# Enable buildkit
+DOCKER_BUILDKIT=${DOCKER_BUILDKIT:-1}
+
+if ! docker buildx version ; then
+  INPUT_BUILDX_VERSION=${INPUT_BUILDX_VERSION:-v0.11.2}
+  echo "Buildx not available ... installing"
+  mkdir -vp ~/.docker/cli-plugins/
+  curl --silent -L "https://github.com/docker/buildx/releases/download/$INPUT_BUILDX_VERSION/buildx-$INPUT_BUILDX_VERSION.linux-amd64" > ~/.docker/cli-plugins/docker-buildx
+  chmod a+x ~/.docker/cli-plugins/docker-buildx
+  docker buildx version
+fi
+
+docker buildx create --use
 
 main
