@@ -178,7 +178,7 @@ function push() {
   done
 
   # See travis_wait
-  ( while :; do sleep 120 && echo hearthbeat; done ) &
+  ( for i in $(seq 30); do sleep 60 && echo "hearthbeat: ${i}m"; done ) &
   pid1=$!
 
   INPUT_PLATFORM=${INPUT_PLATFORM:-"linux/amd64"}
