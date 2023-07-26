@@ -57,32 +57,7 @@ function main() {
   translateDockerTag
   echo "TAGS=$TAGS"
 
-  if uses "${INPUT_WORKDIR}"; then
-    changeWorkingDirectory
-  fi
-
   echo "${INPUT_PASSWORD}" | docker login -u "${INPUT_USERNAME}" --password-stdin "${INPUT_REGISTRY}"
-
-  FIRST_TAG=$(echo "$TAGS" | cut -d ' ' -f1)
-  DOCKERNAME="${INPUT_NAME}:${FIRST_TAG}"
-  BUILDPARAMS="--build-arg BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ") --build-arg COMMIT=$GITHUB_SHA"
-  CONTEXT="."
-
-  if uses "${INPUT_DOCKERFILE}"; then
-    useCustomDockerfile
-  fi
-  if uses "${INPUT_BUILDARGS}"; then
-    addBuildArgs
-  fi
-  if uses "${INPUT_CONTEXT}"; then
-    CONTEXT="${INPUT_CONTEXT}"
-  fi
-  if usesBoolean "${INPUT_CACHE}"; then
-    useBuildCache
-  fi
-  if usesBoolean "${INPUT_SNAPSHOT}"; then
-    useSnapshot
-  fi
 
   push
 
@@ -133,56 +108,39 @@ function translateDockerTag() {
   fi
 }
 
-function changeWorkingDirectory() {
-  cd "${INPUT_WORKDIR}"
-}
-
-function useCustomDockerfile() {
-  BUILDPARAMS="${BUILDPARAMS} -f ${INPUT_DOCKERFILE}"
-}
-
-function addBuildArgs() {
-  for ARG in $(echo "${INPUT_BUILDARGS}" | tr ',' '\n'); do
-    BUILDPARAMS="${BUILDPARAMS} --build-arg ${ARG}"
-    echo "::add-mask::${ARG}"
-  done
-}
-
-function useBuildCache() {
-  if docker pull "${DOCKERNAME}" 2>/dev/null; then
-    BUILDPARAMS="$BUILDPARAMS --cache-from ${DOCKERNAME}"
-  fi
-}
-
-function uses() {
-  [ -n "${1}" ]
-}
-
-function usesBoolean() {
-  [ -n "${1}" ] && [ "${1}" = "true" ]
-}
-
-function useSnapshot() {
-  local TIMESTAMP
-  TIMESTAMP=$(date +%Y%m%d%H%M%S)
-  local SNAPSHOT_TAG="${TIMESTAMP}${SHORT_SHA}"
-  TAGS="${TAGS} ${SNAPSHOT_TAG}"
-  echo ::set-output name=snapshot-tag::"${SNAPSHOT_TAG}"
-}
-
 function push() {
-  local BUILD_TAGS=""
-  for TAG in ${TAGS}
+  BUILDPARAMS=()
+  BUILDPARAMS+=("--build-arg" "BUILD_RFC3339=$(date -u +"%Y-%m-%dT%H:%M:%SZ")") 
+  BUILDPARAMS+=("--build-arg" "COMMIT=$GITHUB_SHA")
+  BUILDPARAMS+=("--label" "org.opencontainers.image.title=$INPUT_NAME")
+  BUILDPARAMS+=("--label" "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')")
+  BUILDPARAMS+=("--cache-to" "type=inline")
+  BUILDPARAMS+=("--cache-from" "type=registry,ref=$INPUT_NAME:edge")
+  if [ -n "$INPUT_DOCKERFILE" ]; then
+    BUILDPARAMS+=("-f" "${INPUT_DOCKERFILE}")
+  fi
+  if [ -n "$INPUT_BUILDARGS" ]; then
+    for ARG in $(echo "${INPUT_BUILDARGS}" | tr ',' '\n'); do
+      BUILDPARAMS+=("--build-arg" "${ARG}")
+    done
+  fi
+
+  BUILDPARAMS+=("--platform" "${INPUT_PLATFORM:-"linux/amd64"}")
+  for tag in ${TAGS}
   do
-    BUILD_TAGS="${BUILD_TAGS}--tag ${INPUT_NAME}:${TAG} "
+    BUILDPARAMS+=("--tag" "${INPUT_NAME}:${tag}")
   done
+  for par in ${INPUT_BUILDOPTIONS}
+  do
+    BUILDPARAMS+=("$par")
+  done
+  BUILDPARAMS+=("${INPUT_CONTEXT:-.}")
 
   # See travis_wait
   ( for i in $(seq 30); do sleep 60 && echo "hearthbeat: ${i}m"; done ) &
   pid1=$!
 
-  INPUT_PLATFORM=${INPUT_PLATFORM:-"linux/amd64"}
-  docker buildx build --platform "$INPUT_PLATFORM" ${INPUT_BUILDOPTIONS} ${BUILDPARAMS} ${BUILD_TAGS} ${CONTEXT} --push
+  docker buildx build "${BUILDPARAMS[@]}" --push
 
   kill -9 "$pid1"
 }
