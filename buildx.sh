@@ -50,7 +50,7 @@ function main() {
   sanitize "${INPUT_PASSWORD}" "password"
 
   REGISTRY_NO_PROTOCOL=${INPUT_REGISTRY#"https://"}
-  if uses "${INPUT_REGISTRY}" && ! isPartOfTheName "${REGISTRY_NO_PROTOCOL}"; then
+  if [ -n "$INPUT_REGISTRY" ] && ! isPartOfTheName "${REGISTRY_NO_PROTOCOL}"; then
     INPUT_NAME="${REGISTRY_NO_PROTOCOL}/${INPUT_NAME}"
   fi
 
