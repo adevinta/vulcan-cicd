@@ -18,7 +18,7 @@ on: pull_request
 
 jobs:
   approve:
-    uses: adevinta/vulcan-cicd/.github/workflows/approve-dependabot-pr.yml@master
+    uses: adevinta/vulcan-cicd/.github/workflows/approve-dependabot-pr.yml@v1
     secrets:
       PAT: ${{ secrets.DEPENDABOT_AUTOMERGE_TOKEN }}
 ```
@@ -48,5 +48,5 @@ on:
 
 jobs:
   release:
-    uses: adevinta/vulcan-cicd/.github/workflows/release-dependabot-updates.yml@master
+    uses: adevinta/vulcan-cicd/.github/workflows/release-dependabot-updates.yml@v1
 ```
