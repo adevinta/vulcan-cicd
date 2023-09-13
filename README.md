@@ -50,3 +50,26 @@ jobs:
   release:
     uses: adevinta/vulcan-cicd/.github/workflows/reusable-release-dependabot-updates.yml@v1
 ```
+
+### Automatic onboard repositories
+
+The onboarding of a new repository can be done by executing a workflow.
+
+```sh
+gh workflow run .github/workflows/onboard.yml -f repository=adevinta/my-repo
+```
+
+To use other PATs.
+
+```sh
+# Create the secrets (if they doesn't exist).
+# Mind not to overwrite valid tokens.
+echo MYTOKEN1 | gh secret set MY_DEPENDABOT_ONBOARD_TOKEN --app actions
+echo MYTOKEN2 | gh secret set MY_DEPENDABOT_AUTOMERGE_TOKEN --app actions
+
+gh workflow run .github/workflows/onboard.yml -f repository=adevinta/my-repo \
+  -f PAT_onboard_secret=MY_DEPENDABOT_ONBOARD_TOKEN \
+  -f PAT_automerge_secret=MY_DEPENDABOT_AUTOMERGE_TOKEN
+```
+
+See [onboard.yml](.github/workflows/onboard.yml) for details

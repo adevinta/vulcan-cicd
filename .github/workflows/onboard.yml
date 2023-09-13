@@ -1,0 +1,38 @@
+name: Onboard repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Repository with owner (i.e. adevinta/vulcan-cicd)
+        type: string
+        required: true
+      PAT_onboard_secret: # Will be used to onboard the repository.
+        description: Name of the secret used to update the target repository (with repo,org:read,orkflow permissions)
+        type: string
+        required: false
+        default: DEPENDABOT_ONBOARD_TOKEN
+      PAT_automerge_secret: # The value will be copied into a dependabot secret in the repository
+        description: Name of the secret with the value (with repo,org:read permissions)
+        type: string
+        required: false
+        default: DEPENDABOT_AUTOMERGE_TOKEN
+jobs:
+  onboard:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.repository }}
+        path: target
+        token: ${{ secrets[ inputs.PAT_onboard_secret ] }}
+    - name: Onboard repository
+      env:
+        REPOSITORY: ${{ inputs.repository }}
+        GH_TOKEN: ${{ secrets[ inputs.PAT_onboard_secret ] }}
+        DEPENDABOT_AUTOMERGE_TOKEN: ${{ secrets[ inputs.PAT_automerge_secret ] }}
+      shell: bash
+      run: |
+        cd ./target
+        $GITHUB_WORKSPACE/scripts/onboard.sh
