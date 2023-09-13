@@ -1,0 +1,30 @@
+name: Approve dependabot PR
+
+on:
+  workflow_call:
+    secrets:
+      PAT:
+        description: Personal access token
+        required: true
+    inputs:
+      runs-on:
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  approve:
+    runs-on: ${{ inputs.runs-on }}
+    if: ${{ github.event.pull_request.user.login == 'dependabot[bot]' }}
+    steps:
+    - name: Fetch metadata
+      id: metadata
+      uses: dependabot/fetch-metadata@v1
+    - name: Approve and auto merge
+      if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+      env:
+        PR_URL: ${{ github.event.pull_request.html_url }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      run: |
+        gh pr review --approve "$PR_URL"
+        gh pr merge --auto --squash --delete-branch "$PR_URL"
