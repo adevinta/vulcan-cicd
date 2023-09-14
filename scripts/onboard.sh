@@ -8,10 +8,10 @@ updates:'
 
 for f in $(find "$PWD" -type f -name go.mod | sed -r 's|/[^/]+$|/|' | sort | uniq); do
 local ignore
-echo '- package-ecosystem: gomod
+echo '- package-ecosystem: "gomod"
   directory: "'"${f/#$PWD}"'"
   schedule:
-    interval: daily'
+    interval: "daily"'
 ignore=
 if grep "github.com/aws/aws-sdk-go" "$f/go.mod" &> /dev/null; then
 ignore+='  - dependency-name: "github.com/aws/aws-sdk-go"
@@ -32,28 +32,28 @@ echo '  labels:
 done
 
 for f in $(find "$PWD" -type f -name "Gemfile" | sed -r 's|/[^/]+$|/|' | sort | uniq); do
-echo '- package-ecosystem: bundler
+echo '- package-ecosystem: "bundler"
   directory: "'"${f/#$PWD}"'"
   schedule:
-    interval: daily
+    interval: "daily"
   labels:
     - "dependencies"'
 done
 
 for f in $(find "$PWD" -type f -name "*requirements*.txt" | sed -r 's|/[^/]+$|/|' | sort | uniq); do
-echo '- package-ecosystem: pip
+echo '- package-ecosystem: "pip"
   directory: "'"${f/#$PWD}"'"
   schedule:
-    interval: daily
+    interval: "daily"
   labels:
     - "dependencies"'
 done
 
 for f in $(find "$PWD" -type f -name "package.json" | sed -r 's|/[^/]+$|/|' | sort | uniq); do
-echo '- package-ecosystem: npm
+echo '- package-ecosystem: "npm"
   directory: "'"${f/#$PWD}"'"
   schedule:
-    interval: daily
+    interval: "daily"
   labels:
     - "dependencies"'
 done
