@@ -32,6 +32,7 @@ jobs:
         REPOSITORY: ${{ inputs.repository }}
         GH_TOKEN: ${{ secrets[ inputs.PAT_onboard_secret ] }}
         DEPENDABOT_AUTOMERGE_TOKEN: ${{ secrets[ inputs.PAT_automerge_secret ] }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       shell: bash
       run: |
         cd ./target
