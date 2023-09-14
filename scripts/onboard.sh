@@ -2,6 +2,79 @@
 
 set -e
 
+generate_dependabot() {
+echo 'version: 2
+updates:'
+
+for f in $(find "$PWD" -type f -name go.mod | sed -r 's|/[^/]+$|/|' | sort | uniq); do
+local ignore
+echo '- package-ecosystem: gomod
+  directory: "'"${f/#$PWD}"'"
+  schedule:
+    interval: daily'
+ignore=
+if grep "github.com/aws/aws-sdk-go" "$f/go.mod" &> /dev/null; then
+ignore+='  - dependency-name: "github.com/aws/aws-sdk-go"
+    update-types: ["version-update:semver-patch"]
+'
+fi
+if grep "github.com/goadesign/goa" "$f/go.mod" &> /dev/null; then
+ignore+='  - dependency-name: "github.com/goadesign/goa"
+    update-types: ["version-update:semver-minor", "version-update:semver-major"]
+'
+fi
+if [ "$ignore" != "" ]; then
+echo '  ignore:'
+echo -n "$ignore"
+fi
+echo '  labels:
+    - "dependencies"'
+done
+
+for f in $(find "$PWD" -type f -name "Gemfile" | sed -r 's|/[^/]+$|/|' | sort | uniq); do
+echo '- package-ecosystem: bundler
+  directory: "'"${f/#$PWD}"'"
+  schedule:
+    interval: daily
+  labels:
+    - "dependencies"'
+done
+
+for f in $(find "$PWD" -type f -name "*requirements*.txt" | sed -r 's|/[^/]+$|/|' | sort | uniq); do
+echo '- package-ecosystem: pip
+  directory: "'"${f/#$PWD}"'"
+  schedule:
+    interval: daily
+  labels:
+    - "dependencies"'
+done
+
+for f in $(find "$PWD" -type f -name "package.json" | sed -r 's|/[^/]+$|/|' | sort | uniq); do
+echo '- package-ecosystem: npm
+  directory: "'"${f/#$PWD}"'"
+  schedule:
+    interval: daily
+  labels:
+    - "dependencies"'
+done
+
+for f in $(find "$PWD" -type f -name Dockerfile | sed -r 's|/[^/]+$|/|' | sort | uniq); do
+echo '- package-ecosystem: "docker"
+  directory: "'"${f/#$PWD}"'"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"'
+done
+
+echo '- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  labels:
+    - "dependencies"'
+}
+
 GITHUB_STEP_SUMMARY=${GITHUB_STEP_SUMMARY:-/dev/stderr}
 
 gh repo set-default "$REPOSITORY"
@@ -14,6 +87,7 @@ git config --global user.email "vulcan@example.org"
 # Add the selected workflows
 mkdir -p .github/workflows
 cp -r "$GITHUB_WORKSPACE/template/." .github
+generate_dependabot > .github/dependabot.yml
 git checkout -b cicd-onboard
 git add .
 git commit -a -m "Onboard dependabot workflows"
