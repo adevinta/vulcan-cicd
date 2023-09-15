@@ -7,16 +7,18 @@ on:
         description: Repository with owner (i.e. adevinta/vulcan-cicd)
         type: string
         required: true
-      PAT_onboard_secret: # Will be used to onboard the repository.
-        description: Name of the secret used to update the target repository (with repo,org:read,orkflow permissions)
+      PAT_onboard_secret: 
+        # Will be used to onboard the repository.
+        description: Name of the action secret used to update the target repository (with repo,org:read,orkflow permissions)
         type: string
         required: false
         default: DEPENDABOT_ONBOARD_TOKEN
-      PAT_automerge_secret: # The value will be copied into a dependabot secret in the repository
-        description: Name of the secret with the value (with repo,org:read permissions)
+      PAT_automerge_secret: 
+        # The value will be copied into a dependabot secret in the repository
+        description: Name of the action secret with the value (with repo,org:read permissions)
         type: string
         required: false
-        default: DEPENDABOT_AUTOMERGE_TOKEN
+        default: DEPENDABOT_ONBOARD_AUTOMERGE_TOKEN
 jobs:
   onboard:
     runs-on: ubuntu-latest
