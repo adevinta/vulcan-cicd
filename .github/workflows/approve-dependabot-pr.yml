@@ -27,9 +27,9 @@ jobs:
         UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
       shell: bash
       run: |
-        gh pr merge --auto --squash --delete-branch "$PR_URL"
+        gh pr merge "$PR_URL" --auto --squash --delete-branch
         if [[ "$UPDATE_TYPE" =~ version-update:(semver-patch|semver-minor) ]]; then
-          gh pr review --approve "$PR_URL"
+          gh pr review "$PR_URL" --approve
           gh pr comment "$PR_URL" --body "Approved $UPDATE_TYPE"
         else
           gh pr comment "$PR_URL" --body "Skipping approval because of $UPDATE_TYPE"
