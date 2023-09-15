@@ -3,39 +3,39 @@ name: Onboard repository
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Environment to run against
+        type: environment
+        required: true
       repository:
         description: Repository with owner (i.e. adevinta/vulcan-cicd)
         type: string
         required: true
-      PAT_onboard_secret: 
-        # Will be used to onboard the repository.
-        description: Name of the action secret used to update the target repository (with repo,org:read,orkflow permissions)
-        type: string
-        required: false
-        default: DEPENDABOT_ONBOARD_TOKEN
-      PAT_automerge_secret: 
-        # The value will be copied into a dependabot secret in the repository
-        description: Name of the action secret with the value (with repo,org:read permissions)
-        type: string
-        required: false
-        default: DEPENDABOT_ONBOARD_AUTOMERGE_TOKEN
 jobs:
   onboard:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/checkout@v4
       with:
         repository: ${{ inputs.repository }}
         path: target
-        token: ${{ secrets[ inputs.PAT_onboard_secret ] }}
+        token: ${{ secrets.ONBOARD_TOKEN }}
+        github-server-url: https://${{ vars.ONBOARD_GH_HOST }}
     - name: Onboard repository
       env:
         REPOSITORY: ${{ inputs.repository }}
-        GH_TOKEN: ${{ secrets[ inputs.PAT_onboard_secret ] }}
-        DEPENDABOT_AUTOMERGE_TOKEN: ${{ secrets[ inputs.PAT_automerge_secret ] }}
+        GH_HOST: ${{ vars.ONBOARD_GH_HOST }}
+        ONBOARD_TOKEN: ${{ secrets.ONBOARD_TOKEN }}
+        DEPENDABOT_AUTOMERGE_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       shell: bash
       run: |
         cd ./target
+        if [ "$GH_HOST" != "github.com" ]; then
+          export GH_ENTERPRISE_TOKEN=$ONBOARD_TOKEN
+        else
+          export GH_TOKEN=$ONBOARD_TOKEN
+        fi
         $GITHUB_WORKSPACE/scripts/onboard.sh
