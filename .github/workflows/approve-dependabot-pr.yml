@@ -20,11 +20,17 @@ jobs:
     - name: Fetch metadata
       id: metadata
       uses: dependabot/fetch-metadata@v1
-    - name: Approve and auto merge
-      if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+    - name: Auto merge and approve
       env:
         PR_URL: ${{ github.event.pull_request.html_url }}
         GITHUB_TOKEN: ${{ secrets.PAT }}
+        UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+      shell: bash
       run: |
-        gh pr review --approve "$PR_URL"
         gh pr merge --auto --squash --delete-branch "$PR_URL"
+        if [[ "$UPDATE_TYPE" =~ version-update:(semver-patch|semver-minor) ]]; then
+          gh pr review --approve "$PR_URL"
+          gh pr comment --body "Approved $UPDATE_TYPE"
+        else
+          gh pr comment --body "Skipping approval because of $UPDATE_TYPE"
+        fi
