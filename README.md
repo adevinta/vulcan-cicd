@@ -56,6 +56,7 @@ jobs:
 The onboarding of a new repository can be done by executing a workflow.
 
 ```sh
+# Will use existing DEPENDABOT_AUTOMERGE_TOKEN and DEPENDABOT_ONBOARD_AUTOMERGE_TOKEN action secrets.
 gh workflow run .github/workflows/onboard.yml -f repository=adevinta/my-repo
 ```
 
