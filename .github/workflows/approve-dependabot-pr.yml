@@ -30,7 +30,7 @@ jobs:
         gh pr merge --auto --squash --delete-branch "$PR_URL"
         if [[ "$UPDATE_TYPE" =~ version-update:(semver-patch|semver-minor) ]]; then
           gh pr review --approve "$PR_URL"
-          gh pr comment --body "Approved $UPDATE_TYPE"
+          gh pr comment "$PR_URL" --body "Approved $UPDATE_TYPE"
         else
-          gh pr comment --body "Skipping approval because of $UPDATE_TYPE"
+          gh pr comment "$PR_URL" --body "Skipping approval because of $UPDATE_TYPE"
         fi
