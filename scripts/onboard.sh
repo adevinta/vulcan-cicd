@@ -80,6 +80,8 @@ HEAD_BRANCH=cicd-onboard
 
 gh repo set-default "$REPOSITORY"
 
+echo "# Onboarding $(gh repo view --json url --jq '.url')" >> "$GITHUB_STEP_SUMMARY"
+
 DEFAULT_BRANCH=$(gh api "repos/$REPOSITORY" --jq '.default_branch')
 
 git config --global user.name "purple-team-service-user"
@@ -87,6 +89,7 @@ git config --global user.email "vulcan@example.org"
 
 PR=$(gh pr ls --search "head:$HEAD_BRANCH" -s open --json number --jq '.[] | .number')
 if [[ "$PR" =~ [0-9]+ ]]; then
+    echo "* :white_check_mark: Found existing PR $PR" >> "$GITHUB_STEP_SUMMARY"
     echo "Updating existing pr $PR"
     gh pr checkout "$PR"
 else
