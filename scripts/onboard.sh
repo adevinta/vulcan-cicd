@@ -115,6 +115,7 @@ if ! git diff-index --quiet --cached HEAD; then
         echo "* :white_check_mark: Updated PR waiting for review $(gh pr view --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
     fi
 
+    gh pr edit --add-label dependencies
 else
 
     echo "* :white_check_mark: No changes needs to be pushed" >> "$GITHUB_STEP_SUMMARY"
