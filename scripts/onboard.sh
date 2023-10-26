@@ -82,6 +82,10 @@ gh repo set-default "$REPOSITORY"
 
 echo "# Onboarding $(gh repo view --json url --jq '.url')" >> "$GITHUB_STEP_SUMMARY"
 
+# Create the dependencies label
+gh label create dependencies -d "Bump dependencies" -c f29513 || true
+echo "* :white_check_mark: Created \`dependencies\` label" >> "$GITHUB_STEP_SUMMARY"
+
 DEFAULT_BRANCH=$(gh api "repos/$REPOSITORY" --jq '.default_branch')
 
 git config --global user.name "purple-team-service-user"
@@ -128,10 +132,6 @@ if [ "$DEPENDABOT_AUTOMERGE_TOKEN" != "" ]; then
 else
   echo "* :warning: Empty PAT. Skipping \`DEPENDABOT_AUTOMERGE_TOKEN\` dependabot secret creation." >> "$GITHUB_STEP_SUMMARY"
 fi
-
-# Create the dependencies label
-gh label create dependencies -d "Bump dependencies" -c f29513 || true
-echo "* :white_check_mark: Created \`dependencies\` label" >> "$GITHUB_STEP_SUMMARY"
 
 # Allow auto-merge pull requests
 gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" \
