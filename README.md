@@ -50,3 +50,26 @@ jobs:
   release:
     uses: adevinta/vulcan-cicd/.github/workflows/reusable-release-dependabot-updates.yml@v1
 ```
+
+### Automatic onboard repositories
+
+The onboarding of a new repository can be done by executing a workflow.
+
+```sh
+gh workflow run .github/workflows/onboard.yml -f repository=myorg/my-repo -f environment=myenv
+```
+
+Where `myenv` is the environment name that defines the following variables:
+
+* Env `ONBOARD_GH_HOST`: Env with the github host (i.e. `github.com`, `github.example.com`, ...)
+* Secret `AUTOMERGE_TOKEN`: PAT for the previous host with `repo`, `org:read` permissions.
+  This token will be copied to the `myorg/my-repo` dependabot secret `DEPENDABOT_AUTOMERGE_TOKEN`.
+* Secret `ONBOARD_TOKEN`: PAT for the previous host with `repo`, `org:read` and `actions` permissions.
+  This token will be used for onboarding the repository (i.e. `myorg/my-repo`)
+  * Creating a PR with the workflows and dependabot configs if needed.
+  * Creating the `DEPENDABOT_AUTOMERGE_TOKEN` used by the workflows.
+  * Creating the label `dependencies`.
+  * Enabling `auto-merge` PRs.
+  * Enabling Security scanning.
+
+See [onboard.yml](.github/workflows/onboard.yml) for details
