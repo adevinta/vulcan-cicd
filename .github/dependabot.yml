@@ -1,17 +1,5 @@
 version: 2
 updates:
-- package-ecosystem: "docker"
-  directory: "/oss/tests/expected/"
-  schedule:
-    interval: "weekly"
-  labels:
-    - "dependencies"
-- package-ecosystem: "docker"
-  directory: "/oss/tests/source/"
-  schedule:
-    interval: "weekly"
-  labels:
-    - "dependencies"
 - package-ecosystem: "github-actions"
   directory: "/"
   schedule:
