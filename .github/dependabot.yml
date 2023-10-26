@@ -1,18 +1,13 @@
 version: 2
 updates:
-- package-ecosystem: gomod
-  directory: "/"
+- package-ecosystem: "docker"
+  directory: "/oss/tests/expected/"
   schedule:
-    interval: daily
-  ignore:
-  - dependency-name: "github.com/goadesign/goa"
-    update-types: ["version-update:semver-minor", "version-update:semver-major"]
-  - dependency-name: "github.com/aws/aws-sdk-go"
-    update-types: ["version-update:semver-patch"]
+    interval: "weekly"
   labels:
     - "dependencies"
 - package-ecosystem: "docker"
-  directory: "/"
+  directory: "/oss/tests/source/"
   schedule:
     interval: "weekly"
   labels:
