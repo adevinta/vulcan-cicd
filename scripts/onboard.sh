@@ -130,7 +130,7 @@ if [ "$DEPENDABOT_AUTOMERGE_TOKEN" != "" ]; then
   echo "$DEPENDABOT_AUTOMERGE_TOKEN" | gh secret set DEPENDABOT_AUTOMERGE_TOKEN --app dependabot
   echo "* :white_check_mark: Created dependabot secret \`DEPENDABOT_AUTOMERGE_TOKEN\`" >> "$GITHUB_STEP_SUMMARY"
 else
-  echo "* :warning: Empty PAT. Skipping \`DEPENDABOT_AUTOMERGE_TOKEN\` dependabot secret creation." >> "$GITHUB_STEP_SUMMARY"
+  echo "* :warning: Empty PAT. Skipping \`DEPENDABOT_AUTOMERGE_TOKEN\` dependabot secret creation. Ensure the secret is available for your repo." >> "$GITHUB_STEP_SUMMARY"
 fi
 
 # Allow auto-merge pull requests
