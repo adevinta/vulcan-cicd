@@ -175,7 +175,7 @@ echo "* :white_check_mark: Enabled dependabot security updates" >> "$GITHUB_STEP
 #     --method PUT "/repos/$REPOSITORY/branches/$DEFAULT_BRANCH/protection" \
 #     --input -  > /dev/null
 {
-echo "* :bangbang: Enable branch protection for $DEFAULT_BRANCH here <https://github.com/$REPOSITORY/settings/branches>"
-echo "* :bangbang: Enable 'Dependabot version updates' here <https://github.com/$REPOSITORY/settings/security_analysis>"
-echo "* :bangbang: After merge create a release https://github.com/$REPOSITORY/releases/new" 
+echo "* :bangbang: Enable branch protection for $DEFAULT_BRANCH here <https://$GH_HOST/$REPOSITORY/settings/branches>"
+echo "* :bangbang: Enable 'Dependabot version updates' here <https://$GH_HOST/$REPOSITORY/settings/security_analysis>"
+echo "* :bangbang: After merge create a release https://$GH_HOST/$REPOSITORY/releases/new" 
 } >> "$GITHUB_STEP_SUMMARY"
