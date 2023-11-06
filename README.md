@@ -8,7 +8,10 @@ This repository contains scripts and workflows to automate CI/CD tasks.
 
 Add this workflow to approve the dependabot pull requests.
 
-The target branch should be protected to require checks to be passed in order to prevent
+* Activates auto-merge for **all** dependabot pull requests.
+* Approves the dependabot pull requests for `minor` or `patch` updates.
+  * `major` updates must be approved.
+  * The target branch should be protected to require checks to be passed in order to prevent
 merging faulty updates.
 
 ```yaml
