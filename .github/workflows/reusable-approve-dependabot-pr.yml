@@ -25,10 +25,17 @@ jobs:
     - name: Auto merge and approve
       env:
         PR_URL: ${{ github.event.pull_request.html_url }}
-        GITHUB_TOKEN: ${{ secrets.PAT }}
+        PAT: ${{ secrets.PAT }}
+        SERVER_URL: ${{ github.server_url }}
         UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
       shell: bash
       run: |
+        export GH_HOST="${SERVER_URL#https://}"
+        if [ "$GH_HOST" == "github.com" ]; then
+          export GH_TOKEN=$PAT
+        else
+          export GH_ENTERPRISE_TOKEN=$PAT
+        fi
         gh pr merge "$PR_URL" --auto --squash --delete-branch
         if [[ "$UPDATE_TYPE" =~ version-update:(semver-patch|semver-minor) ]]; then
           gh pr review "$PR_URL" --approve
