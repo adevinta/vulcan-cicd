@@ -27,15 +27,15 @@ jobs:
       env:
         REPOSITORY: ${{ inputs.repository }}
         GH_HOST: ${{ vars.ONBOARD_GH_HOST }}
-        ONBOARD_TOKEN: ${{ secrets.ONBOARD_TOKEN }}
+        PAT: ${{ secrets.ONBOARD_TOKEN }}
         DEPENDABOT_AUTOMERGE_TOKEN: ${{ secrets.AUTOMERGE_TOKEN }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       shell: bash
       run: |
         cd ./target
-        if [ "$GH_HOST" != "github.com" ]; then
-          export GH_ENTERPRISE_TOKEN=$ONBOARD_TOKEN
+        if [ "$GH_HOST" == "github.com" ]; then
+          export GH_TOKEN=$PAT
         else
-          export GH_TOKEN=$ONBOARD_TOKEN
+          export GH_ENTERPRISE_TOKEN=$PAT
         fi
         $GITHUB_WORKSPACE/scripts/onboard.sh

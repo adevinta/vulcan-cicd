@@ -54,8 +54,15 @@ jobs:
       if: ${{ steps.history.outputs.authors=='dependabot[bot]' && steps.history.outputs.next!='' }}
       env:
         RELEASE_TAG: ${{ steps.history.outputs.next }}
-        GH_TOKEN: ${{ github.token }}
+        PAT: ${{ github.token }}
+        SERVER_URL: ${{ github.server_url }}
       shell: bash
       run: |
+        export GH_HOST="${SERVER_URL#https://}"
+        if [ "$GH_HOST" == "github.com" ]; then
+          export GH_TOKEN=$PAT
+        else
+          export GH_ENTERPRISE_TOKEN=$PAT
+        fi
         gh release create "$RELEASE_TAG" --generate-notes
         echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
