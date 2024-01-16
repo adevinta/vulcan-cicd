@@ -136,11 +136,18 @@ function push() {
   done
   BUILDPARAMS+=("${INPUT_CONTEXT:-.}")
 
+  # new versions of buildx generate an attestation layer, thus generating a explicit image
+  # for the specified platform. This makes mac arm to fail as no arm image is available.
+  # See https://stackoverflow.com/questions/76499510/why-i-can-not-pull-the-docker-image-that-is-public-in-dockerhub
+  if docker buildx build --help | grep provenance ; then
+    BUILDPARAMS+=("--provenance=false")
+  fi
+
   # See travis_wait
   ( for i in $(seq 30); do sleep 60 && echo "hearthbeat: ${i}m"; done ) &
   pid1=$!
 
-  echo "BUILDPARAMS=${BUILDPARAMS[*]}"
+  echo "docker buildx build "${BUILDPARAMS[@]}" --push"
   docker buildx build "${BUILDPARAMS[@]}" --push
 
   kill -9 "$pid1"
